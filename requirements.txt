@@ -9,3 +9,4 @@ open3d
 numba
 bokeh
 tensorflow
+pykitti
