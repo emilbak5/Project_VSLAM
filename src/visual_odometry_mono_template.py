@@ -3,6 +3,10 @@ import numpy as np
 import cv2
 
 import pykitti
+import sys
+import os
+
+sys.path.insert(1, os.getcwd()) #Use this to get the lib module to work (gets current working dir)
 
 from lib.visualization import plotting
 from lib.visualization.video import play_trip
@@ -16,7 +20,9 @@ class VisualOdometry():
     def __init__(self, dataset: pykitti.odometry):
 
         self.dataset = dataset
-        
+        self.cam0_K = self.dataset.calib.K_cam0
+        self.cam0_P =  self.dataset.calib.P_rect_00
+
         self.orb = cv2.ORB_create(3000)
         FLANN_INDEX_LSH = 6
         index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
@@ -63,17 +69,12 @@ class VisualOdometry():
         # https://docs.opencv.org/master/d1/de0/tutorial_py_feature_homography.html
 
         img1 = np.array(self.dataset.get_cam0(i - 1))
-        img1 = cv2.cvtColor(img1, cv2.COLOR_RGB2BGR)
         img2 = np.array(self.dataset.get_cam0(i))
-        img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2BGR)
 
 
-        # find the keypoints with ORB
-        kp1 = self.orb.detect(img1, None)
-        kp2 = self.orb.detect(img2, None)
         # compute the descriptors with ORB
-        kp1, des1 = self.orb.compute(img1, kp1)
-        kp2, des2 = self.orb.compute(img2, kp2)
+        kp1, des1 = self.orb.detectAndCompute(img1, None)
+        kp2, des2 = self.orb.detectAndCompute(img2, None)
 
         matches = self.flann.knnMatch(des1, des2, k=2)
 
@@ -106,7 +107,7 @@ class VisualOdometry():
 
         points1 = np.array(q1)
         points2 = np.array(q2)
-        E, _ = cv2.findEssentialMat(points1, points2, cameraMatrix=self.dataset.calib.K_cam0)
+        E, _ = cv2.findEssentialMat(points1, points2, cameraMatrix=self.cam0_K)
 
         r1, r2, t = cv2.decomposeEssentialMat(E)
 
@@ -119,13 +120,12 @@ class VisualOdometry():
 
         max_count = 0
         T_highest_count = None
-        P = self.dataset.calib.P_rect_00
+        P = self.cam0_P
         for T in Ts:
             Q = []
             Q_2 = []
             for i in range(int(points1.size/2)):
-                Q.append(cv2.triangulatePoints(
-                    P, P@T, points1[i], points2[i]))
+                Q.append(cv2.triangulatePoints(P, P@T, points1[i], points2[i]))
                 Q[i] = Q[i] / Q[i][3]
                 Q_2.append(T @ Q[i])
             only_pos_Q = [num for num in Q if num[2] >= 0]
@@ -160,13 +160,14 @@ class VisualOdometry():
         pass
 
 
-def main():
+def visual_odemetry_mono():
 
     basedir = './data'
     sequence = '00'
     # data_dir = './data/sequences/00'  # Try KITTI_sequence_2 too
 
-    dataset = pykitti.odometry(basedir, sequence)#, frames=range(0, 20, 5))
+    frames = range(0, 50, 1) #Indicate how many frames to use
+    dataset = pykitti.odometry(basedir, sequence, frames=frames)
     
     poses = dataset.poses
 
@@ -176,21 +177,18 @@ def main():
     gt_path = []
     estimated_path = []
     for i, gt_pose in enumerate(tqdm(poses, unit="pose")):
-        # if i == 0:
-        #     cur_pose = gt_pose
-        # else:
-        #     q1, q2 = vo.get_matches(i)
-        #     transf = vo.get_pose(q1, q2)
-        #     cur_pose = np.matmul(cur_pose, np.linalg.inv(transf))
+        if i == 0:
+            cur_pose = gt_pose
+        else:
+            q1, q2 = vo.get_matches(i)
+            transf = vo.get_pose(q1, q2)
+            cur_pose = np.matmul(cur_pose, np.linalg.inv(transf))
 
         
         gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
-        #estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+        estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
 
 
-    plotting.visualize_paths(gt_path, gt_path, "Visual Odometry",
+    plotting.visualize_paths(gt_path, estimated_path, "Visual Odometry",
                              file_out=os.path.basename(basedir) + sequence + ".html")
 
-
-if __name__ == "__main__":
-    main()
