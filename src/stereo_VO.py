@@ -40,6 +40,13 @@ class VisualOdometry():
                               maxLevel=3,
                               criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 50, 0.03))
 
+        self.orb = cv2.ORB_create(2000)
+        FLANN_INDEX_LSH = 6
+        index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
+        search_params = dict(checks=50)
+        self.flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
+
+
     @staticmethod
     def _load_calib(filepath):
         """
@@ -190,6 +197,7 @@ class VisualOdometry():
 
             # Detect keypoints
             keypoints = self.fastFeatures.detect(impatch)
+            #keypoints, des1 = self.orb.detectAndCompute(img, None)
 
             # Correct the coordinate for the point
             for pt in keypoints:
@@ -205,6 +213,8 @@ class VisualOdometry():
 
         # Get the keypoints for each of the tiles
         kp_list = [get_kps(x, y) for y in range(0, h, tile_h) for x in range(0, w, tile_w)]
+
+        #kp_list_flatten, des1 = self.orb.detectAndCompute(img, None)
 
         # Flatten the keypoint list
         kp_list_flatten = np.concatenate(kp_list)
@@ -309,15 +319,23 @@ class VisualOdometry():
         Q2 (ndarray): 3D points seen from the i'th image. In shape (n, 3)
         """
         # Triangulate points from i-1'th image
-        Q1 = cv2.triangulatePoints(self.P_l, self.P_r, q1_l.T, q1_r.T)
-        # Un-homogenize
-        Q1 = np.transpose(Q1[:3] / Q1[3])
 
-        # Triangulate points from i'th image
-        Q2 = cv2.triangulatePoints(self.P_l, self.P_r, q2_l.T, q2_r.T)
-        # Un-homogenize
-        Q2 = np.transpose(Q2[:3] / Q2[3])
-        return Q1, Q2
+        enough_points = True
+
+        if len(q1_r) > 0:
+            Q1 = cv2.triangulatePoints(self.P_l, self.P_r, q1_l.T, q1_r.T)
+            # Un-homogenize
+            Q1 = np.transpose(Q1[:3] / Q1[3])
+
+            # Triangulate points from i'th image
+            Q2 = cv2.triangulatePoints(self.P_l, self.P_r, q2_l.T, q2_r.T)
+            # Un-homogenize
+            Q2 = np.transpose(Q2[:3] / Q2[3])
+            return Q1, Q2, enough_points
+        else: 
+            enough_points = False
+            return None, None, False
+
 
     def estimate_pose(self, q1, q2, Q1, Q2, max_iter=100):
         """
@@ -408,11 +426,13 @@ class VisualOdometry():
         tp1_l, tp1_r, tp2_l, tp2_r = self.calculate_right_qs(tp1_l, tp2_l, self.disparities[i - 1], self.disparities[i])
 
         # Calculate the 3D points
-        Q1, Q2 = self.calc_3d(tp1_l, tp1_r, tp2_l, tp2_r)
-
+        Q1, Q2, enough_points = self.calc_3d(tp1_l, tp1_r, tp2_l, tp2_r)
+        if enough_points:
         # Estimate the transformation matrix
-        transformation_matrix = self.estimate_pose(tp1_l, tp2_l, Q1, Q2)
-        return transformation_matrix
+            transformation_matrix = self.estimate_pose(tp1_l, tp2_l, Q1, Q2)
+            return transformation_matrix, enough_points
+        else: 
+            return 0, enough_points
 
 
 def main():
@@ -422,24 +442,29 @@ def main():
     #play_trip(vo.images_l, vo.images_r)  # Comment out to not play the trip
     basedir = './data'
     sequence = '00'
-    # data_dir = './data/sequences/00'  # Try KITTI_sequence_2 too
+    # data_dir = './data/sequences/00'  # Try KITTI_sequence_2 t oo
 
-    frames = range(0, 4000, 4) #Indicate how many frames to use
-    dataset = pykitti.odometry(basedir, sequence, frames=frames)
+    frames = range(0, 500, 1) #Indicate how many frames to use
+    dataset = pykitti.odometry(basedir, sequence)#, frames=frames)
     
     poses = dataset.poses
 
     vo = VisualOdometry(dataset)
     gt_path = []
     estimated_path = []
+    enough_points = None
+    transf = None
     for i, gt_pose in enumerate(tqdm(poses, unit="poses")):
         if i < 1:
             cur_pose = gt_pose
         else:
-            transf = vo.get_pose(i)
+            transf, enough_points = vo.get_pose(i)
+        if enough_points:    
             cur_pose = np.matmul(cur_pose, transf)
-        gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
-        estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+            gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
+            estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+        else: 
+            pass
     plotting.visualize_paths(gt_path, estimated_path, "Stereo Visual Odometry",
                              file_out=os.path.basename(basedir) + 'll'".html")
 
