@@ -1,10 +1,13 @@
 import os
+from turtle import shape
 import numpy as np
 import cv2
 from scipy.optimize import least_squares
 import sys
 import pykitti
-
+from tomlkit import boolean
+import dummy_graph
+import sys
 sys.path.insert(1, os.getcwd()) #Use this to get the lib module to work (gets current working dir)
 
 from lib.visualization import plotting
@@ -45,6 +48,7 @@ class VisualOdometry():
         index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
         search_params = dict(checks=50)
         self.flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
+
 
 
     @staticmethod
@@ -220,7 +224,7 @@ class VisualOdometry():
         kp_list_flatten = np.concatenate(kp_list)
         return kp_list_flatten
 
-    def track_keypoints(self, img1, img2, kp1, max_error=4):
+    def track_keypoints(self, img1, img2, trackpoints1_, max_error=4):
         """
         Tracks the keypoints between frames
 
@@ -236,8 +240,8 @@ class VisualOdometry():
         trackpoints1 (ndarray): The tracked keypoints for the i-1'th image. Shape (n_keypoints_match, 2)
         trackpoints2 (ndarray): The tracked keypoints for the i'th image. Shape (n_keypoints_match, 2)
         """
-        # Convert the keypoints into a vector of points and expand the dims so we can select the good ones
-        trackpoints1 = np.expand_dims(cv2.KeyPoint_convert(kp1), axis=1)
+
+        trackpoints1 = np.expand_dims(trackpoints1_, axis=1) 
 
         # Use optical flow to find tracked counterparts
         trackpoints2, st, err = cv2.calcOpticalFlowPyrLK(img1, img2, trackpoints1, None, **self.lk_params)
@@ -396,6 +400,49 @@ class VisualOdometry():
         transformation_matrix = self._form_transf(R, t)
         return transformation_matrix
 
+    def kp_left_in_right(self, kp1_l, disp1, min_disp=0.0, max_disp=100.0):
+        """
+        Calculates the right keypoints (feature points)
+
+        Parameters
+        ----------
+        q1 (ndarray): Feature points in i-1'th left image. In shape (n_points, 2)
+        disp1 (ndarray): Disparity i-1'th image per. Shape (height, width)
+        min_disp (float): The minimum disparity
+        max_disp (float): The maximum disparity
+
+        Returns
+        -------
+        q1_l (ndarray): Feature points in i-1'th left image. In shape (n_in_bounds, 2)
+        q1_r (ndarray): Feature points in i-1'th right image. In shape (n_in_bounds, 2)
+        """
+
+        n_points = len(kp1_l)
+        kp1_l_idx = np.ndarray(n_points, dtype=bool)
+        for i in range(0, n_points):
+            q_idx = kp1_l[i].pt
+            disp = disp1.T[int(q_idx[0]), int(q_idx[1])]
+            if min_disp < disp and disp < max_disp:
+                kp1_l_idx[i] = True
+            else:
+                kp1_l_idx[i] = False  
+        
+        return kp1_l[kp1_l_idx]
+
+    def init(self, init_pose):
+        img1_l = np.array(self.dataset.get_cam0(0))
+        # Get teh tiled keypoints
+        kp1_l = self.get_tiled_keypoints(img1_l, 10, 20)
+        
+        points = cv2.KeyPoint_convert(kp1_l)
+    
+        self.prev_frame = dummy_graph.Frame(points, init_pose)
+
+        kp1_l = self.kp_left_in_right(kp1_l, self.disparities[0])
+
+        return dummy_graph.Frame(kp1_l, init_pose)
+
+
     def get_pose(self, i):
         """
         Calculates the transformation matrix for the i'th frame
@@ -414,11 +461,12 @@ class VisualOdometry():
         #img1_l, img2_l = self.images_l[i - 1:i + 1]
 
         # Get teh tiled keypoints
-        kp1_l = self.get_tiled_keypoints(img1_l, 10, 20)
+        trackpoints1 = self.prev_frame.points
 
         # Track the keypoints
-        tp1_l, tp2_l = self.track_keypoints(img1_l, img2_l, kp1_l)
+        tp1_l, tp2_l = self.track_keypoints(img1_l, img2_l, trackpoints1)
 
+        
         # Calculate the disparitie
         self.disparities.append(np.divide(self.disparity.compute(img2_l, np.array(self.dataset.get_cam1(i))).astype(np.float32), 16))
 
@@ -430,9 +478,21 @@ class VisualOdometry():
         if enough_points:
         # Estimate the transformation matrix
             transformation_matrix = self.estimate_pose(tp1_l, tp2_l, Q1, Q2)
-            return transformation_matrix, enough_points
+            ##### Keyframe descision
+            kp2_l = np.ndarray([])
+            if(len(tp2_l) < 200):
+                kp2_l = self.get_tiled_keypoints(img2_l, 10, 20)
+                kp2_l = self.kp_left_in_right(kp2_l, self.disparities[i])
+                tp2_l = cv2.KeyPoint_convert(kp2_l)
+            
+            self.prev_frame = dummy_graph.Frame(tp2_l, transformation_matrix)
+
+            frame = dummy_graph.Frame(kp2_l, transformation_matrix)
+
+            return frame, enough_points
         else: 
-            return 0, enough_points
+            return dummy_graph.Frame(np.ndarray([]), np.identity(4)), enough_points
+
 
 
 def main():
@@ -443,28 +503,34 @@ def main():
     basedir = './data'
     sequence = '00'
     # data_dir = './data/sequences/00'  # Try KITTI_sequence_2 t oo
-
-    frames = range(0, 500, 1) #Indicate how many frames to use
-    dataset = pykitti.odometry(basedir, sequence)#, frames=frames)
+    frames = range(0, 10, 1) #Indicate how many frames to use
+    dataset = pykitti.odometry(basedir, sequence, frames=frames)#, frames=frames)
     
     poses = dataset.poses
 
     vo = VisualOdometry(dataset)
+    graph = dummy_graph.Graph()
     gt_path = []
     estimated_path = []
     enough_points = None
-    transf = None
+    frame = None
     for i, gt_pose in enumerate(tqdm(poses, unit="poses")):
         if i < 1:
             cur_pose = gt_pose
-        else:
-            transf, enough_points = vo.get_pose(i)
-        if enough_points:    
-            cur_pose = np.matmul(cur_pose, transf)
+            keyframe = vo.init(cur_pose)
+            graph.init(keyframe)
             gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
             estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
-        else: 
-            pass
+        else:
+            frame, enough_points = vo.get_pose(i)
+            if enough_points:    
+                cur_pose = np.matmul(cur_pose, frame.pose)
+                graph.add_edge(frame.pose)
+                graph.add_vertex(dummy_graph.Frame(frame.points, cur_pose))
+                gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
+                estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+            else:  
+                pass
     plotting.visualize_paths(gt_path, estimated_path, "Stereo Visual Odometry",
                              file_out=os.path.basename(basedir) + 'll'".html")
 
