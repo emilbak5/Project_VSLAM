@@ -444,8 +444,8 @@ def main():
     sequence = '00'
     # data_dir = './data/sequences/00'  # Try KITTI_sequence_2 t oo
 
-    frames = range(0, 500, 1) #Indicate how many frames to use
-    dataset = pykitti.odometry(basedir, sequence)#, frames=frames)
+    frames = range(0, 10, 1) #Indicate how many frames to use
+    dataset = pykitti.odometry(basedir, sequence, frames=frames)#, frames=frames)
     
     poses = dataset.poses
 
@@ -457,14 +457,16 @@ def main():
     for i, gt_pose in enumerate(tqdm(poses, unit="poses")):
         if i < 1:
             cur_pose = gt_pose
-        else:
-            transf, enough_points = vo.get_pose(i)
-        if enough_points:    
-            cur_pose = np.matmul(cur_pose, transf)
             gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
             estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
-        else: 
-            pass
+        else:
+            transf, enough_points = vo.get_pose(i)
+            if enough_points:    
+                cur_pose = np.matmul(cur_pose, transf)
+                gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
+                estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+            else: 
+                pass
     plotting.visualize_paths(gt_path, estimated_path, "Stereo Visual Odometry",
                              file_out=os.path.basename(basedir) + 'll'".html")
 
