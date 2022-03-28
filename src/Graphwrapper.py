@@ -14,7 +14,12 @@ from pyrsistent import v
 #   Could be that the graph just does not get updated while in known territory 
 # Might have to do the graph directed. Depends how the edge are defined. If they are defined as (last_V, V), there is no need. If they are getting ordered in acending order, thats a problem, since you can't tell which way the transformation is
 #   It is ordered
-#
+# Måske hashtable? (kigge på x,y)
+#   HVer gang vi laver ny vertex, skla den ind på et hashtable
+#   Måske løser visual words det hele
+#   Bruge dict, kan bruge (x,y) til key, hver værdi der hører til er descriptoren
+
+
 
 # useful commands
 # g.get_edges(), gives you a matrix of the different edges, and their vertices in order

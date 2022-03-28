@@ -22,6 +22,7 @@ def main():
     ver=test.g.get_vertices()
     print(ver)
 
+    test.helpGraph
 
 
 
