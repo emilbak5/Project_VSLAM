@@ -5,7 +5,7 @@ import cv2
 from scipy.optimize import least_squares
 import sys
 import pykitti
-from tomlkit import boolean
+from tomlkit import boolean, key
 import dummy_graph
 import sys
 sys.path.insert(1, os.getcwd()) #Use this to get the lib module to work (gets current working dir)
@@ -479,7 +479,7 @@ class VisualOdometry():
         # Estimate the transformation matrix
             transformation_matrix = self.estimate_pose(tp1_l, tp2_l, Q1, Q2)
             ##### Keyframe descision
-            kp2_l = np.ndarray([])
+            kp2_l = np.array([])
             if(len(tp2_l) < 200):
                 kp2_l = self.get_tiled_keypoints(img2_l, 10, 20)
                 kp2_l = self.kp_left_in_right(kp2_l, self.disparities[i])
@@ -512,6 +512,7 @@ def main():
     graph = dummy_graph.Graph()
     gt_path = []
     estimated_path = []
+    keypoint_path = []
     enough_points = None
     frame = None
     for i, gt_pose in enumerate(tqdm(poses, unit="poses")):
@@ -521,6 +522,8 @@ def main():
             graph.init(keyframe)
             gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
             estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+            keypoint_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+            
         else:
             frame, enough_points = vo.get_pose(i)
             if enough_points:    
@@ -529,6 +532,9 @@ def main():
                 graph.add_vertex(dummy_graph.Frame(frame.points, cur_pose))
                 gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
                 estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+                
+                if np.size(frame.points) > 0:
+                    keypoint_path.append((cur_pose[0, 3], cur_pose[2, 3]))
             else:  
                 pass
     plotting.visualize_paths(gt_path, estimated_path, "Stereo Visual Odometry",

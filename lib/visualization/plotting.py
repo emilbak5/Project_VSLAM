@@ -16,13 +16,15 @@ def visualize_paths(gt_path, pred_path, html_tile="", title="VO exercises", file
     output_file(file_out, title=html_tile)
     gt_path = np.array(gt_path)
     pred_path = np.array(pred_path)
+    key_path = np.array(key_path)
 
     tools = "pan,wheel_zoom,box_zoom,box_select,lasso_select,reset"
 
     gt_x, gt_y = gt_path.T
     pred_x, pred_y = pred_path.T
-    xs = list(np.array([gt_x, pred_x]).T)
-    ys = list(np.array([gt_y, pred_y]).T)
+
+    xs = list(np.array([gt_x, pred_x, key_x]).T)
+    ys = list(np.array([gt_y, pred_y, key_y]).T)
 
     diff = np.linalg.norm(gt_path - pred_path, axis=1)
     source = ColumnDataSource(data=dict(gtx=gt_path[:, 0], gty=gt_path[:, 1],
