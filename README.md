@@ -6,7 +6,7 @@
 
 # How to install Graph-tools
 The following line needs to be added to: /etc/apt/sources.list
-deb [ arch=amd64 ] https://downloads.skewed.de/apt focal main
+    deb [ arch=amd64 ] https://downloads.skewed.de/apt focal main
 
 First make a backup copy
 
