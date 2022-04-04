@@ -21,7 +21,7 @@ basedir = './data'
 sequence = '00'
 # data_dir = './data/sequences/00'  # Try KITTI_sequence_2 too
 
-number_of_images = 400
+number_of_images = 500
 
 frames = range(0, number_of_images, 1) #Indicate how many frames to use
 dataset = pykitti.odometry(basedir, sequence, frames=frames)
@@ -34,7 +34,7 @@ search_params = dict(checks=50)
 flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams={})
 
 
-for i in range(number_of_images-100):
+for i in range(number_of_images):
     img = np.array(dataset.get_cam0(i))
     keypoints, des = orb.detectAndCompute(img, None)
     flann.add([des])
@@ -43,7 +43,7 @@ for i in range(number_of_images-100):
 print (str(len(flann.getTrainDescriptors())))
 
 
-img_to_look_for = 35
+img_to_look_for = 10
 most_similar_idx = find_most_similar_image(flann, img_to_look_for)
 
 
