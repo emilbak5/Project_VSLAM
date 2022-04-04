@@ -24,28 +24,32 @@ from pyrsistent import v
 # useful commands
 # g.get_edges(), gives you a matrix of the different edges, and their vertices in order
 class graphstructure():
-    def __init__(self,pose,virtuelInfo):
+    def __init__(self,pose,image_features, image_descriptors):
 
 
 
         self.g=Graph(directed=False)
         self.v_pose=self.g.new_vertex_property("object")
-        self.v_Vinfo=self.g.new_vertex_property("object")
+        self.v_Vfeat=self.g.new_vertex_property("object")
+        self.v_Vdisc=self.g.new_vertex_property("object")
         self.e_unc=self.g.new_edge_property("float")
         self.e_trans=self.g.new_edge_property("object")
+
 
         self.edgelist=[]
 
 
         self.last_v=self.g.add_vertex()
         self.v_pose[self.last_v]=pose
-        self.v_Vinfo[self.last_v]=virtuelInfo
+        self.v_Vfeat[self.last_v]=image_features
+        self.v_Vdisc[self.last_v]=image_descriptors
         #print(self.v_pose(self.last_v))
-    def add_vertex (self, pose, virtuelInfo, uncertanity, transformation):
+    def add_vertex (self, pose, image_features, image_descriptors, uncertanity, transformation):
         v=self.g.add_vertex()
 
         self.v_pose[v]=pose
-        self.v_Vinfo[v]=virtuelInfo
+        self.v_Vfeat[v]=image_features
+        self.v_Vdisc[v]=image_descriptors
 
         
         e=self.g.add_edge(self.last_v,v)
