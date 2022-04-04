@@ -3,11 +3,11 @@ from turtle import shape
 import numpy as np
 import cv2
 from scipy.optimize import least_squares
-import sys
-import pykitti
 from tomlkit import boolean, key
 import dummy_graph
 import sys
+import pykitti
+
 sys.path.insert(1, os.getcwd()) #Use this to get the lib module to work (gets current working dir)
 
 from lib.visualization import plotting
