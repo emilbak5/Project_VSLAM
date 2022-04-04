@@ -6,6 +6,7 @@
 
 # How to install Graph-tools
 The following line needs to be added to: /etc/apt/sources.list
+
     deb [ arch=amd64 ] https://downloads.skewed.de/apt focal main
 
 First make a backup copy
@@ -14,7 +15,7 @@ First make a backup copy
 
 Should be able to use a text editor to do it, but else run
 
-    echo " the line to add to sources.list " | sudo tee -a /etc/apt/sources.list
+    echo "deb [ arch=amd64 ] https://downloads.skewed.de/apt focal main" | sudo tee -a /etc/apt/sources.list
 
 Then, downloade the public key 
 https://keys.openpgp.org/search?q=612DEFB798507F25
@@ -22,7 +23,7 @@ to verify the packages using the command
 
     apt-key adv --keyserver keyserver.ubuntu.com --recv-key 612DEFB798507F25
 
-The command have to be used as SUDO and at the same place as the public key
+The command have to be used as SUDO and at the same place as the public key (Probably downloads)
 
 After, run "apt-get update" and then 
 
