@@ -34,20 +34,24 @@ class graphstructure():
         self.e_unc=self.g.new_edge_property("float")
         self.e_trans=self.g.new_edge_property("object")
 
+        self.v_keypoints = self.g.new_vertex_property("object")
+
         self.edgelist=[]
 
 
         self.last_v=self.g.add_vertex()
         self.v_pose[self.last_v]=pose
         self.v_Vinfo[self.last_v]=virtuelInfo
+
         #print(self.v_pose(self.last_v))
-    def add_vertex (self, pose, virtuelInfo, uncertanity, transformation):
+    def add_vertex (self, pose, virtuelInfo, uncertanity, transformation, keypoints):
         v=self.g.add_vertex()
 
         self.v_pose[v]=pose
         self.v_Vinfo[v]=virtuelInfo
 
-        
+        self.v_keypoints[v] = keypoints 
+
         e=self.g.add_edge(self.last_v,v)
         self.e_unc[e]=uncertanity
         self.e_trans[e]=transformation
@@ -57,6 +61,7 @@ class graphstructure():
         e=self.g.add_edge(self.last_v,targetV)
         self.e_unc[e]=uncertainty
         self.e_trans[e]=transformation
+        
         self.edgelist.append(e)
         self.last_v=targetV
 

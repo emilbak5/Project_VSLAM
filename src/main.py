@@ -5,8 +5,10 @@ from graph_tool.all import *
 import numpy as np
 
 
+from src.descriptors import *
 from src.helper_functions import *
 from src.keyframe import *
+from src.lsh_flann import *
 
 
 def main():
@@ -33,26 +35,35 @@ def main():
     gt_poses = dataset.poses
     infotest=np.array([1,2,3])
     graph = Graphwrapper.graphstructure(gt_poses[0], infotest)
+
+    keyframe_selector = keyframeSelector()
+    orb = cv2.ORB_create(2000)
+
+    FLANN_INDEX_LSH = 6
+    index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
+    search_params = dict(checks=50)
+    flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams={})
+
     
 
 
 
 
     for i in range(num_images):
-    
         
-        idx = get_keyframe(dataset, i, graph)
+        
+        idx = keyframe_selector.get_next_keyframe(dataset, i, graph, orb)
 
-    #     if key_frame_found:
-    #         desc = get_descripters(idx)
-    #         add_to_lsh_table(desc)
-    #         transform = stereo_vo(desc)
-    #         add_to_graph(transform, desc, i, graph)
-    #         visualize_path(graph)
-    #         idx, loop_closure_found_bool = check_for_loop_closure(i, graph, lsh_table)
-    #         if loop_closure_found_bool:
-    #             perform_loop_closure(idx, graph)
-    #             visualize_path(graph)
+
+        desc = get_descripters(idx, dataset, orb)
+        add_to_lsh_table(desc, flann)
+        transform = stereo_vo(desc)
+        # add_to_graph(transform, desc, i, graph)
+        # visualize_path(graph)
+        # idx, loop_closure_found_bool = check_for_loop_closure(i, graph, lsh_table)
+        # if loop_closure_found_bool:
+        #     perform_loop_closure(idx, graph)
+        #     visualize_path(graph)
 
 
 
