@@ -9,6 +9,7 @@ from src.descriptors import *
 from src.helper_functions import *
 from src.keyframe import *
 from src.lsh_flann import *
+from stereo_vo_cleaned import *
 
 
 def main():
@@ -57,7 +58,7 @@ def main():
 
         desc = get_descripters(idx, dataset, orb)
         add_to_lsh_table(desc, flann)
-        transform = stereo_vo(desc)
+        transform = stereo_vo(desc, idx)
         # add_to_graph(transform, desc, i, graph)
         # visualize_path(graph)
         # idx, loop_closure_found_bool = check_for_loop_closure(i, graph, lsh_table)
