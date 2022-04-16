@@ -1,8 +1,11 @@
 import cv2
 
+from src.Graphwrapper import *
 
 
-def stero_vo(kp, desc, graph):
+
+
+def stereo_vo(kp, desc, graph: graphstructure):
     """
     Calculates the transformation matrix for the i'th frame
 
@@ -14,6 +17,9 @@ def stero_vo(kp, desc, graph):
     -------
     transformation_matrix (ndarray): The transformation matrix. Shape (4,4)
     """
+
+    test = graph.g.vertex(0)
+    new_test = graph.v_pose[test]
     # Get the i-1'th image and i'th image
     img1_l = np.array(dataset.get_cam0(i - 1))
     img2_l = np.array(dataset.get_cam0(i))

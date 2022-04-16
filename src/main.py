@@ -9,7 +9,7 @@ from src.descriptors import *
 from src.helper_functions import *
 from src.keyframe import *
 from src.lsh_flann import *
-from stereo_vo_cleaned import *
+from src.stereo_vo_cleaned import *
 
 
 def main():
@@ -53,18 +53,22 @@ def main():
     for i in range(num_images):
         
         
-        idx = keyframe_selector.get_next_keyframe(dataset, i, graph, orb)
+            idx = keyframe_selector.get_next_keyframe(dataset, i, graph, orb)
 
 
-        desc = get_descripters(idx, dataset, orb)
+        kp, desc = get_descripters(idx, dataset, orb)
         add_to_lsh_table(desc, flann)
-        transform = stereo_vo(desc, idx)
+        transform = stereo_vo(kp, desc, graph, idx)
+        if i % 7 == 0:
+            pass
+            #bundle adjustment
+
         # add_to_graph(transform, desc, i, graph)
         # visualize_path(graph)
         # idx, loop_closure_found_bool = check_for_loop_closure(i, graph, lsh_table)
         # if loop_closure_found_bool:
         #     perform_loop_closure(idx, graph)
-        #     visualize_path(graph)
+        #     update_visualize_path(graph)
 
 
 

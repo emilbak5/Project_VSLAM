@@ -12,7 +12,7 @@ sys.path.insert(1, os.getcwd()) #Use this to get the lib module to work (gets cu
 
 from lib.visualization import plotting
 from lib.visualization.video import play_trip
-
+    
 from tqdm import tqdm
 
 
