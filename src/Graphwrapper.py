@@ -26,15 +26,17 @@ from pyrsistent import v
 class graphstructure():
     def __init__(self,pose,virtuelInfo):
 
-
-
         self.g=Graph(directed=False)
+
         self.v_pose=self.g.new_vertex_property("object")
         self.v_Vinfo=self.g.new_vertex_property("object")
+        self.v_keypoints = self.g.new_vertex_property("object")
+        self.v_descriptors = self.g.new_vertex_property("object")
+
+
         self.e_unc=self.g.new_edge_property("float")
         self.e_trans=self.g.new_edge_property("object")
 
-        self.v_keypoints = self.g.new_vertex_property("object")
 
         self.edgelist=[]
 
@@ -49,8 +51,7 @@ class graphstructure():
 
         self.v_pose[v]=pose
         self.v_Vinfo[v]=virtuelInfo
-
-        self.v_keypoints[v] = keypoints 
+        self.v_keypoints[v] = keypoints
 
         e=self.g.add_edge(self.last_v,v)
         self.e_unc[e]=uncertanity

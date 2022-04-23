@@ -3,32 +3,27 @@ from Graphwrapper import *
 
 
 
-class keyframeSelector():
-    def __init__(self) -> None:
+
+
+def get_next_keyframe(dataset, i: int, graph: graphstructure, orb, prev_index):
+
+    img_iter = 1
+    img_curr = np.array(dataset.get_cam0(i))
+    vertex_prev = graph.g.vertex(prev_index)
+
+    trackpoints = graph.v_keypoints[vertex_prev]
+    
+
+    while True:
         
-        self.trackpoints = None
+        img_next = np.array(dataset.get_cam0(i + img_iter))
+        
+        
+        tp1_l, tp2_l = track_keypoints(img_curr, img_next, trackpoints)
+        img_iter += 1
 
-    def get_next_keyframe(self, dataset, i: int, graph: graphstructure, orb):
-
-        img_iter = 1
-        img_curr = np.array(dataset.get_cam0(i))
-
-        while True:
-            
-
-            img_next = np.array(dataset.get_cam0(i + img_iter))
-
-
-            if i == 0 and img_iter == 1:
-                keypoints, _ = orb.detectAndCompute(img_curr, None)
-                self.trackpoints = cv2.KeyPoint_convert(keypoints)
-            
-            
-            tp1_l, tp2_l = track_keypoints(img_curr, img_next, self.trackpoints)
-            img_iter += 1
-
-            if len(tp1_l) < 40:
-                return i + img_iter
+        if len(tp1_l) < 100:
+            return i + img_iter
 
 
 

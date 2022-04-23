@@ -34,8 +34,7 @@ class VisualOdometry():
         P1 = block * block * 8
         P2 = block * block * 32
         self.disparity = cv2.StereoSGBM_create(minDisparity=0, numDisparities=32, blockSize=block, P1=P1, P2=P2)
-        self.disparities = [
-            np.divide(self.disparity.compute(np.array(self.dataset.get_cam0(0)), np.array(self.dataset.get_cam1(0))).astype(np.float32), 16)]
+        self.disparities = [np.divide(self.disparity.compute(np.array(self.dataset.get_cam0(0)), np.array(self.dataset.get_cam1(0))).astype(np.float32), 16)]
         self.fastFeatures = cv2.FastFeatureDetector_create()
 
         self.lk_params = dict(winSize=(15, 15),
