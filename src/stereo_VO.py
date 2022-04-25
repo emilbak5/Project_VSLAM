@@ -1,5 +1,7 @@
 import os
+from time import sleep
 from turtle import shape
+from anyio import current_default_worker_thread_limiter
 import numpy as np
 import cv2
 from scipy.optimize import least_squares
@@ -14,6 +16,21 @@ from lib.visualization import plotting
 from lib.visualization.video import play_trip
 
 from tqdm import tqdm
+
+#from bokeh.plotting import curdoc
+
+#from bokeh.layouts import column
+from bokeh.models import Button
+from bokeh.server.server import Server
+
+
+from bokeh.models.widgets import Panel, Tabs
+from bokeh.io import output_file, show, save
+from bokeh.plotting import figure, ColumnDataSource, curdoc
+from bokeh.layouts import column, layout, gridplot, row
+from bokeh.models import Div, WheelZoomTool, Slider
+from bokeh.models.widgets import Panel, Tabs
+from bokeh.driving import count
 
 
 class VisualOdometry():
@@ -494,52 +511,162 @@ class VisualOdometry():
             return dummy_graph.Frame(np.ndarray([]), np.identity(4)), enough_points
 
 
-
-def main():
-    # data_dir = 'data/KITTI_sequence_2'  # Try KITTI_sequence_2
-    # vo = VisualOdometry(data_dir)
-
-    #play_trip(vo.images_l, vo.images_r)  # Comment out to not play the trip
-    basedir = './data'
-    sequence = '00'
-    # data_dir = './data/sequences/00'  # Try KITTI_sequence_2 t oo
-    frames = range(0, 10, 1) #Indicate how many frames to use
-    dataset = pykitti.odometry(basedir, sequence, frames=frames)#, frames=frames)
     
-    poses = dataset.poses
 
-    vo = VisualOdometry(dataset)
-    graph = dummy_graph.Graph()
-    gt_path = []
-    estimated_path = []
-    keypoint_path = []
-    enough_points = None
-    frame = None
-    for i, gt_pose in enumerate(tqdm(poses, unit="poses")):
-        if i < 1:
-            cur_pose = gt_pose
-            keyframe = vo.init(cur_pose)
-            graph.init(keyframe)
+#def main():
+# data_dir = 'data/KITTI_sequence_2'  # Try KITTI_sequence_2
+# vo = VisualOdometry(data_dir)
+
+#play_trip(vo.images_l, vo.images_r)  # Comment out to not play the trip
+basedir = './data'
+sequence = '00'
+#data_dir = './data/sequences/00'  # Try KITTI_sequence_2 t oo
+frames = range(0, 10, 1) #Indicate how many frames to use
+dataset = pykitti.odometry(basedir, sequence, frames=frames)#, frames=frames)
+
+poses = dataset.poses
+
+vo = VisualOdometry(dataset)
+graph = dummy_graph.Graph()
+gt_path = []
+estimated_path = []
+keypoint_path = []
+enough_points = None
+frame = None
+for i, gt_pose in enumerate(tqdm(poses, unit="poses")):
+    if i < 1:
+        cur_pose = gt_pose
+        keyframe = vo.init(cur_pose)
+        graph.init(keyframe)
+        gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
+        estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+        keypoint_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+        Visu=plotting.VisualDataSource(gt_path, estimated_path)
+        Visu.visualize_paths(gt_path, estimated_path, "Stereo Visual Odometry",
+                        file_out=os.path.basename(basedir) + 'll'".html")
+
+
+        
+    else:
+        frame, enough_points = vo.get_pose(i)
+        if enough_points:    
+            cur_pose = np.matmul(cur_pose, frame.pose)
+            graph.add_edge(frame.pose)
+            graph.add_vertex(dummy_graph.Frame(frame.points, cur_pose))
             gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
             estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
-            keypoint_path.append((cur_pose[0, 3], cur_pose[2, 3]))
-            
-        else:
-            frame, enough_points = vo.get_pose(i)
-            if enough_points:    
-                cur_pose = np.matmul(cur_pose, frame.pose)
-                graph.add_edge(frame.pose)
-                graph.add_vertex(dummy_graph.Frame(frame.points, cur_pose))
-                gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
-                estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
-                
-                if np.size(frame.points) > 0:
-                    keypoint_path.append((cur_pose[0, 3], cur_pose[2, 3]))
-            else:  
-                pass
-    plotting.visualize_paths(gt_path, estimated_path, "Stereo Visual Odometry",
-                             file_out=os.path.basename(basedir) + 'll'".html")
+            #callback(gt_path,estimated_path,Visu)
+            if np.size(frame.points) > 0:
+                keypoint_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+        else:  
+            pass
+    #sleep(5)
+#Visu=plotting.VisualDataSource(gt_path, estimated_path)
+gt_path_reduced=gt_path[0:-5]
+estimated_path_reduced=estimated_path[0:-5]
+
+print(vo.K_l)
+print(vo.K_r)
 
 
-if __name__ == "__main__":
-    main()
+@count()
+def callback(t):
+    #for i in range(len(Visu.gt_path)-1):
+    gt_path = np.array(Visu.gt_path[t+1])
+    pred_path = np.array(Visu.pred_path[t+1])
+
+    gt_x, gt_y = gt_path.T
+    pred_x, pred_y = pred_path.T
+
+    gt_path=gt_path.reshape(-1,2)
+    pred_path=pred_path.reshape(-1,2)
+
+    temp1=np.array([gt_x, pred_x]).T
+    xs = list(temp1.reshape(-1,2))
+
+    temp2=np.array([gt_y, pred_y]).T
+    ys = list(temp2.reshape(-1,2))
+
+    print("test")
+
+    diff = np.linalg.norm(gt_path - pred_path, axis=1)
+    print(len(diff))
+    
+
+
+    data=dict(gtx=gt_path[:, 0], gty=gt_path[:, 1],
+                                        px=pred_path[:, 0], py=pred_path[:, 1],
+                                        diffx=np.arange(len(diff)), diffy=diff,
+                                        disx=xs, disy=ys)
+    print(data)
+    Visu.source.stream(data,100)
+    print(t)
+    
+#Visu.visualize_paths(gt_path_reduced, estimated_path_reduced, "Stereo Visual Odometry",
+#                        file_out=os.path.basename(basedir) + 'll'".html")
+#Visu.visualize_paths(gt_path, estimated_path, "Stereo Visual Odometry",
+#                         file_out=os.path.basename(basedir) + 'll'".html")
+#print(gt_path_reduced)
+#print(gt_path[0])
+#-----
+# def visual_path():
+# gt_path_reduced = np.array(gt_path_reduced)
+# pred_path_reduced = np.array(estimated_path_reduced)
+# #key_path = np.array(key_path)
+
+# tools = "pan,wheel_zoom,box_zoom,box_select,lasso_select,reset"
+
+# gt_x, gt_y = gt_path_reduced.T
+# pred_x, pred_y = pred_path_reduced.T
+
+# #xs = list(np.array([gt_x, pred_x, key_x]).T)
+# #ys = list(np.array([gt_y, pred_y, key_y]).T)
+
+# xs = list(np.array([gt_x, pred_x]).T)
+# ys = list(np.array([gt_y, pred_y]).T)
+
+# diff = np.linalg.norm(gt_path_reduced - pred_path_reduced, axis=1)
+# source = ColumnDataSource(data=dict(gtx=gt_path_reduced[:, 0], gty=gt_path_reduced[:, 1],
+#                                     px=pred_path_reduced[:, 0], py=pred_path_reduced[:, 1],
+#                                     diffx=np.arange(len(diff)), diffy=diff,
+#                                     disx=xs, disy=ys))
+
+# fig1 = figure(title="Paths", tools=tools, match_aspect=True, width_policy="max", toolbar_location="above",
+#             x_axis_label="x", y_axis_label="y")
+# fig1.circle("gtx", "gty", source=source, color="blue", hover_fill_color="firebrick", legend_label="GT")
+# fig1.line("gtx", "gty", source=source, color="blue", legend_label="GT")
+
+# fig1.circle("px", "py", source=source, color="green", hover_fill_color="firebrick", legend_label="Pred")
+# fig1.line("px", "py", source=source, color="green", legend_label="Pred")
+
+# fig1.multi_line("disx", "disy", source=source, legend_label="Error", color="red", line_dash="dashed")
+# fig1.legend.click_policy = "hide"
+
+
+
+#----
+#curdoc().add_root(Visu.plot)
+
+#curdoc().add_periodic_callback(callback, 5000)
+#curdoc().title = "OHLC"
+# for i in range(5):
+
+#     Visu.visualize_update(gt_path[i+5],estimated_path[i+5])
+button= Button(label="Accept")
+offset = Slider(title="offset", value=0.0, start=-5.0, end=5.0, step=0.1)
+    
+    
+# server = Server({'/': main}, num_procs=4)
+# server.start()
+#button.on_click(callback)
+
+curdoc().add_root(row(Visu.plot,offset,button))
+curdoc().title = "OHLC"
+curdoc().add_periodic_callback(callback,500)
+
+#if __name__ == "__main__":
+    #main()
+    # print('Opening Bokeh application on http://localhost:5006/')
+
+    # server.io_loop.add_callback(server.show, "/")
+    # server.io_loop.start()
