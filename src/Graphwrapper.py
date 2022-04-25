@@ -32,6 +32,8 @@ class graphstructure():
         self.v_Vinfo=self.g.new_vertex_property("object")
         self.v_keypoints = self.g.new_vertex_property("object")
         self.v_descriptors = self.g.new_vertex_property("object")
+        
+        self.v_image_idx = self.g.new_vertex_property("int")
 
 
         self.e_unc=self.g.new_edge_property("float")

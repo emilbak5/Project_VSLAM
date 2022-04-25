@@ -358,7 +358,7 @@ class VisualOdometry():
         return kp1_l[kp1_l_idx]
 
 
-    def get_pose(self, kp, desc, dataset, graph: graphstructure, idx, prev_idx):
+    def get_pose(self, kp, desc, dataset, graph: graphstructure, current_img_idx, prev_idx):
 
         """
         Calculates the transformation matrix for the i'th frame
@@ -372,19 +372,23 @@ class VisualOdometry():
         transformation_matrix (ndarray): The transformation matrix. Shape (4,4)
         """
         # Get the i-1'th image and i'th image
-        img1_l = np.array(self.dataset.get_cam0(idx - 1))
-        img2_l = np.array(self.dataset.get_cam0(idx))
+
         #img1_l, img2_l = self.images_l[i - 1:i + 1]
 
         # Get teh tiled keypoints
         vertex_0 = graph.g.vertex(len(graph.g.get_vertices()) - 1)
         trackpoints1 = graph.v_keypoints[vertex_0]
+
+
+        img1_l = np.array(self.dataset.get_cam0(prev_idx))
+        img2_l = np.array(self.dataset.get_cam0(current_img_idx))
+
         # Track the keypoints
         tp1_l, tp2_l = self.track_keypoints(img1_l, img2_l, trackpoints1)
 
         
         # Calculate the disparitie
-        self.disparities.append(np.divide(self.disparity.compute(img2_l, np.array(self.dataset.get_cam1(idx))).astype(np.float32), 16))
+        self.disparities.append(np.divide(self.disparity.compute(img2_l, np.array(self.dataset.get_cam1(current_img_idx))).astype(np.float32), 16))
 
         # Calculate the right keypoints
 

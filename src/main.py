@@ -56,18 +56,19 @@ def main():
 
         kp, desc = get_descripters(keyframe_idx, dataset, orb)
         add_to_lsh_table(desc, flann)
-        transform, _ = VO.get_pose(kp, desc, dataset, graph, keyframe_idx, prev_idx)
-        add_to_graph(transform, desc, kp, graph_size, graph)
+        transform, _ = VO.get_pose(kp, desc, dataset, graph, current_img_idx, prev_idx)
+        add_to_graph(transform, desc, kp, graph_size, keyframe_idx, graph)
         graph_size += 1
 
 
-        if current_img_idx % 7 == 0:
+        if graph_size % 7 == 0:
             pass
             #bundle adjustment
 
         # visualize_path(graph)
-        idx = find_most_similar_image(graph_size, graph, flann) # Is not done
-        # if loop_closure_found_bool:
+        idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann) # Is not done
+        if loop_closure_found_bool:
+            pass
         #     perform_loop_closure(idx, graph)
         #     update_visualize_path(graph)
         prev_idx = current_img_idx
