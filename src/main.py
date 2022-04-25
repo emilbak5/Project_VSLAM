@@ -46,30 +46,33 @@ def main():
 
 
 
-    i = 1
+    current_img_idx = 1
+    graph_size = 1
     
-    while i < num_images:        
+    while current_img_idx < num_images:        
         
-        idx = get_next_keyframe(dataset, i, graph, orb, prev_idx)
+        keyframe_idx = get_next_keyframe(dataset, current_img_idx, graph, orb, graph_size)
 
 
-        kp, desc = get_descripters(idx, dataset, orb)
+        kp, desc = get_descripters(keyframe_idx, dataset, orb)
         add_to_lsh_table(desc, flann)
-        transform, _ = VO.get_pose(kp, desc, dataset, graph, idx, prev_idx)
-        add_to_graph(transform, desc, kp, i, graph)
+        transform, _ = VO.get_pose(kp, desc, dataset, graph, keyframe_idx, prev_idx)
+        add_to_graph(transform, desc, kp, graph_size, graph)
+        graph_size += 1
 
 
-        if i % 7 == 0:
+        if current_img_idx % 7 == 0:
             pass
             #bundle adjustment
 
         # visualize_path(graph)
-        # idx, loop_closure_found_bool = check_for_loop_closure(i, graph, lsh_table)
+        idx = find_most_similar_image(graph_size, graph, flann) # Is not done
         # if loop_closure_found_bool:
         #     perform_loop_closure(idx, graph)
         #     update_visualize_path(graph)
-        prev_idx += 1
-        i = idx + 1
+        prev_idx = current_img_idx
+        current_img_idx = keyframe_idx
+        print (graph_size)
 
 
 

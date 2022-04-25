@@ -5,11 +5,11 @@ from Graphwrapper import *
 
 
 
-def get_next_keyframe(dataset, i: int, graph: graphstructure, orb, prev_index):
+def get_next_keyframe(dataset, i: int, graph: graphstructure, orb, graph_size):
 
     img_iter = 1
     img_curr = np.array(dataset.get_cam0(i))
-    vertex_prev = graph.g.vertex(prev_index)
+    vertex_prev = graph.g.vertex(graph_size - 1)
 
     trackpoints = graph.v_keypoints[vertex_prev]
     

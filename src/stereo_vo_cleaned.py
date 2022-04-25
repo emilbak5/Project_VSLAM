@@ -377,7 +377,7 @@ class VisualOdometry():
         #img1_l, img2_l = self.images_l[i - 1:i + 1]
 
         # Get teh tiled keypoints
-        vertex_0 = graph.g.vertex(0)
+        vertex_0 = graph.g.vertex(len(graph.g.get_vertices()) - 1)
         trackpoints1 = graph.v_keypoints[vertex_0]
         # Track the keypoints
         tp1_l, tp2_l = self.track_keypoints(img1_l, img2_l, trackpoints1)

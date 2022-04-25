@@ -13,7 +13,7 @@ def add_to_graph(transform, desc, kp, i, graph: graphstructure):
     edge = graph.g.add_edge(prev_vertex, vertex)
     
     graph.v_descriptors[vertex] = desc
-    graph.v_keypoints[vertex] = desc
+    graph.v_keypoints[vertex] = kp
     
     graph.e_trans[edge] = transform
 

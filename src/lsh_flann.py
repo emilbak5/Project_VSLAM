@@ -3,6 +3,8 @@ import cv2
 import pykitti
 import numpy as np
 from collections import Counter
+from src.Graphwrapper import *
+
 
 
 # def find_most_similar_image(flann_matcher: cv2.FlannBasedMatcher, image_idx_to_search_for: int):
@@ -54,7 +56,21 @@ from collections import Counter
 
 
 # cv2.waitKey()
+def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.FlannBasedMatcher):
+    print ("Matching...")
 
+    vertex = graph.g.vertex(graph_size - 1)
+
+    desc = graph.v_descriptors[vertex]
+
+    dmatches = lsh_table.match(desc)
+
+    index_list = [dmatch.imgIdx for dmatch in dmatches]
+    occurence_count = Counter(index_list)
+    most_occuring = occurence_count.most_common(1)[0][0]
+
+    ### Insert track keypointsfunc to see how many is in the same image
+    return most_occuring
 
 def add_to_lsh_table(desc, flann):
     flann.add([desc])
