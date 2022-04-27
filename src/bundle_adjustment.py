@@ -1,10 +1,10 @@
 import os
 import sys
-from sympy import true
+#from sympy import true
 
 from yaml import parse
 #sys.path.insert(1, os.path.abspath(""))
-sys.path.append(r"C:\Users\Ulric\OneDrive - Syddansk Universitet\8. Semester\Advanced Computer Vision\Exercises\ProjectStructure\AdvancedComputerVisionExercises")
+sys.path.insert(1, os.getcwd()) #Use this to get the lib module to work (gets current working dir)
 
 import bz2
 
@@ -19,6 +19,34 @@ import random
 
 
 from lib.visualization.plotting import plot_residual_results, plot_sparsity
+
+def test_keypoints_out_frame(kp1, kp2, image1, image2):
+    center_coordinates1 = (int(kp1[0]), int(kp1[1]))
+    center_coordinates2 = (int(kp2[0]), int(kp2[1]))
+    # Radius of circle
+    radius = 5
+
+    # Blue color in BGR
+    color = (255, 0, 0)
+    # Line thickness of 2 px
+    thickness = 2
+    
+    # Using cv2.circle() method
+    # Draw a circle with blue line borders of thickness of 2 px
+    image1 = cv2.circle(image1, center_coordinates1, radius, color, thickness)
+    image2 = cv2.circle(image2, center_coordinates2, radius, color, thickness)
+
+    # Displaying the image
+    window_name1 = "Image 1"
+    window_name2 = "Image 2"
+    cv2.imshow(window_name1, image1)
+    cv2.imshow(window_name2, image2)
+    cv2.waitKey(0)
+
+def inverse_T(T):
+    T[:3,:3] = np.transpose(T[:3,:3])
+    T[:3, 3] = -np.matmul(T[:3,:3], T[:3, 3])
+    return T
 
 def reindex(idxs):
     keys = np.sort(np.unique(idxs))
@@ -99,37 +127,27 @@ def objective(params, n_cams, n_Qs, cam_idxs, Q_idxs, qs):
     # project() expects an arrays of shape (len(qs), 3) indexed using Q_idxs and (len(qs), 9) indexed using cam_idxs
     # Copy the elements of the camera parameters and 3D points based on cam_idxs and Q_idxs
 
-    # Get the camera parameters
-    cam_params = params[:n_cams * 6].reshape((n_cams, 6))
+    # Get the camera extrinsic parameters
+    cam_extrinsics_rodrigues = params[:n_cams * 6].reshape((n_cams, 6))
+    #Define camera intrinsics (No distortion params)
+    K = np.array([[718.856,0,607.1928],[0,718.856,185.2157],[0,0,1]])
 
     # Get the 3D points
     Qs = params[n_cams * 6:].reshape((n_Qs, 3))
 
-    # Project the 3D points into the image planes
-    #qs_proj = project(Qs[Q_idxs], cam_params[cam_idxs])
     Qs_points = Qs[Q_idxs]
-    K = np.array([[718.856,0,607.1928],[0,718.856,185.2157],[0,0,1]])
+    
     qs_proj = np.empty((Q_idxs.size, 2))
     for i in range(Q_idxs.size):
-        pt, _ = cv2.projectPoints(Qs_points[i], params[cam_idxs[i]*6:cam_idxs[i]*6 + 3], params[cam_idxs[i]*6 + 3:cam_idxs[i]*6 + 6], K, np.empty(0))
-        #ass = params[cam_idxs[i]*6 + 3:cam_idxs[i]*6 + 6]
+        R_vec = params[cam_idxs[i]*6:cam_idxs[i]*6 + 3]
+        t_vec = params[cam_idxs[i]*6 + 3:cam_idxs[i]*6 + 6]
+        cam = cam_idxs[i]
+        Q = Qs_points[i]
+        pt, _ = cv2.projectPoints(Q, R_vec, t_vec, K, np.empty(0))
         qs_proj[i] = pt
-
-
-
-    #print("Qs SHAPE: ", Qs.shape)
-    #print("Qs[Q_idxs] SHAPE: ",Qs[Q_idxs].shape)
-    #qs_proj = cv2.projectpoints(Qs[Q_idxs],)
-    #print("proj", qs_proj[0])
-    #print("qs: ", qs[0])
-
-    # for i in range(int(qs.size/2)):
-    #     if qs_proj[i][0] - qs[i][0] > 400 or qs_proj[i][1] - qs[i][1] > 400:
-    #         print("qs[i] = ", qs[i])
-    #         print("qs_proj[i][0] = ", qs_proj[i])
-    #         print("cam: ", cam_idxs[i])
-    #         pass
-
+        if pt[0][0][0] > 1241 or pt[0][0][1] > 376:
+            #print("Error")
+            pass
 
     # Calculate the residuals
     residuals = (qs_proj - qs).ravel()
@@ -250,7 +268,7 @@ def fast_outlier_detection(pts1, pts2, img_shift, std_factor = 1):
 
     return pts1_new, pts2_new
 
-def triangulation(kp1, kp2, T_1w, T_2w):
+def triangulation(kp1, kp2, T1, T2):
     # Function modified from: Project: DF-VO   Author: Huangying-Zhan   File: ops_3d.py    License: MIT License
     """Triangulation to get 3D points
     Args:
@@ -263,35 +281,27 @@ def triangulation(kp1, kp2, T_1w, T_2w):
         X1 (3xN): 3D coordinates of the keypoints w.r.t view1 coordinate
         X2 (3xN): 3D coordinates of the keypoints w.r.t view2 coordinate
     """
-    kp1_3D = np.ones((3, 1))
-    kp2_3D = np.ones((3, 1))
-    kp1_3D[0], kp1_3D[1] = kp1[0], kp1[1]
-    kp2_3D[0], kp2_3D[1] = kp2[0], kp2[1]
-    #print(np.array([[718.856,0,607.1928],[0,718.856,185.2157],[0,0,1]]))
-    #print(T_1w[:3])
+    K = np.array([[718.856,0,607.1928],[0,718.856,185.2157],[0,0,1]], dtype=np.float64)
 
-    T_1w = np.matmul(np.array([[718.856,0,607.1928],[0,718.856,185.2157],[0,0,1]]), T_1w[:3])
-    T_2w = np.matmul(np.array([[718.856,0,607.1928],[0,718.856,185.2157],[0,0,1]]), T_2w[:3])
-    X = cv2.triangulatePoints(T_1w[:3], T_2w[:3], kp1_3D[:2], kp2_3D[:2])
-    X /= X[3]
-    #X = np.transpose(X[:3] / X[3])
-    #np.transpose(tri_result[:3]/tri_result[3])
-    #X1 = T_1w[:3] @ X
-    #X2 = T_2w[:3] @ X
-    return X[:3]
+    P1 = np.matmul(K, T1[:3])
+    P2 = np.matmul(K, T2[:3])
+
+    Q = cv2.triangulatePoints(P1, P2, kp1, kp2)
+    Q = Q[:4]/Q[3]
+
+    return Q[:3]
 
 
 # Pre processing for bundle adjustment, takes list of keypoints and descriptors
 # kpdes = [[kp1, des1], [kp2, des2], [kp3, des3]] corresponding to camera 0, 1, 2.... n
-# cam_matrices = list of initial estimated camera matrices for each camera. Needs to have same length of kpdes
+# cam_extrinsics = list of initial estimated camera matrices for each camera. Needs to have same length of kpdes
 # hamming_threshold = number describing how matching the descriptors should be before accepted, the lower the more picky and less (but strong) features will be accepted
 # search_window = Can specify the search window if one wants to limit process time since it can theoretically be ex: 300 images before amount of found correspondences is lower then min_correspondences
 #                 this will cause enormous matrix in bundle adjustment which is impractical for real time Bundle Adjustment, one could limit this to having a maximum overlap of 5 images 
 #                 if minc_correspondences = 0 and search window = len(kpdes) then every combination of features are searched (aka complete search), this is fast for less than 10 images but time complexity of approx 500^N where N is the length of kpdes aka amount of images (or cameras)
 # window_shift = variable that limits the search space and speeds up the process, instead of searching 1st image (image [0]) and matching it with all next, it only matches it with 2,4,6... images (if this value is = 2) (Should not be used if there are a few descriptors ex: 7 in our SLAM example)
 # window_shift_jump = variable that makes this function faster so if we need to search 7 images, then we match 1st image (image [0]) with 1,2,3,4,5,6 but if this variable is 2 then we match the 1st image with 2,4,6 image reducing overhead. This value must be less than search_window
-def BA_pre_processing_cam_n_points(kpdes, cam_matrices, hamming_threshold = 25, search_window = 7, window_shift = 1, window_shift_jump = 1):
-    start = time.process_time()
+def BA_pre_processing_cam_n_points(kpdes, cam_extrinsics, hamming_threshold = 25, search_window = 7, window_shift = 1, window_shift_jump = 1):
     if window_shift >= search_window:
         print("ERROR IN BA: window_shift must be less than search_window")
     n_cams = len(kpdes)     # Number of Cameras
@@ -311,8 +321,8 @@ def BA_pre_processing_cam_n_points(kpdes, cam_matrices, hamming_threshold = 25, 
                 n_qs_tmp = 0
                 camidx_x = None
                 camidx_y = None
-                kp_x = None
-                kp_y = None     
+                kp1 = None
+                kp2 = None     
                 for des_y in range(des_x + 1, mov_win + search_window, window_shift_jump):
                     for j in range(len(kpdes[des_y][1])):                           
                         d = hamming_dist(kpdes[des_x][1][i], kpdes[des_y][1][j])
@@ -322,20 +332,20 @@ def BA_pre_processing_cam_n_points(kpdes, cam_matrices, hamming_threshold = 25, 
                                 cam_idxs = np.append(cam_idxs, des_x)
                                 camidx_x = des_x
                                 Q_idxs = np.append(Q_idxs, n_Qs)
-                                kp_x = np.asarray(kpdes[des_x][0][i].pt)
-                                qs = np.append(qs, kp_x)
+                                kp1 = np.asarray(kpdes[des_x][0][i].pt)
+                                qs = np.append(qs, kp1)
 
                                 cam_idxs = np.append(cam_idxs, des_y)
                                 camidx_y = des_y
                                 Q_idxs = np.append(Q_idxs, n_Qs)
-                                kp_y = np.asarray(kpdes[des_y][0][j].pt)
-                                qs = np.append(qs, kp_y)
+                                kp2 = np.asarray(kpdes[des_y][0][j].pt)
+                                qs = np.append(qs, kp2)
                                 n_qs_tmp += 2
                             else:
                                 cam_idxs = np.append(cam_idxs, des_y)
                                 camidx_y = des_y
                                 Q_idxs = np.append(Q_idxs, n_Qs)
-                                kp_y = np.asarray(kpdes[des_y][0][j].pt)
+                                kp2 = np.asarray(kpdes[des_y][0][j].pt)
                                 qs = np.append(qs, np.asarray(kpdes[des_y][0][j].pt))
                                 n_qs_tmp += 1
 
@@ -353,11 +363,18 @@ def BA_pre_processing_cam_n_points(kpdes, cam_matrices, hamming_threshold = 25, 
                             break   # No need to search any further since we assume no more descriptors match that same query descriptor
                 if n_qs_tmp != 0:
                     # Triangulate 2 of the points and add it to Q_idxs list
-                    point3D = triangulation(kp_x, kp_y, cam_matrices[camidx_x], cam_matrices[camidx_y])
-                    #point3D = point3D / 1000 # Convert this shit to km
-                    Qs = np.append(Qs, point3D)
-                    #print("point3D: ", point3D)
-                    #print(Qs[n_Qs])
+                    cam_ex1 = cam_extrinsics[camidx_x]
+                    cam_ex2 = cam_extrinsics[camidx_y]
+                    Q = triangulation(kp1, kp2, cam_extrinsics[camidx_x], cam_extrinsics[camidx_y])
+                    if (Q[0] > -4.81 and Q[0] < -4.79) or (Q[2] > 68 and Q[2] < 69):
+                        if camidx_x ==75 or camidx_y == 75:
+                            print("WAIT!")
+                            #-4.8
+                            #-2.31
+                            #-68.57
+                            pass
+                    Qs = np.append(Qs, Q)
+
                     n_qs += n_qs_tmp
                     n_Qs += 1 # As the last thing, increment
         n_qs = np.size(qs, 0)
@@ -379,54 +396,58 @@ def BA_pre_processing_cam_n_points(kpdes, cam_matrices, hamming_threshold = 25, 
 
     Qs = Qs.reshape(int(Qs.size/3), 3)
     qs = qs.reshape(int(qs.size/2), 2)
-
-    print("Bundle Adjustment Pre Processing took: ", time.process_time() - start, " Seconds")
     return Qs, cam_idxs, Q_idxs, qs
 
 
 def main():
-    print("HEY")
+    print("Starting bundle adjustment...")
+    start_BA = time.process_time()
 
+    #Get the camera and image data
     basedir = './data'
     sequence = '00'
 
-    num_images = 20
-    frames = range(0, num_images, 1) #Indicate how many frames to use
+    n_frames = 100
+    frames = range(0, n_frames, 1) #Indicate how many frames to use
     dataset = pykitti.odometry(basedir, sequence, frames=frames)#, frames=frames)
     
-    #K = dataset.calib.K_cam0
-    #print(K)
-    
-    poses = dataset.poses
+    cam_K = dataset.calib.K_cam0    
+    cam_poses = dataset.poses
 
     # Initiate ORB detector
     orb = cv2.ORB_create(nfeatures=100) # nFeatures is a very important number because the lower it is, the faster the computation time
     # find the keypoints and descriptors with ORB
-    img_kp_and_des = []
-    cam_params = []
-    cam_transformations = []
+
+    #Setup keypoint and extrinsic camera list
+    frames_kp_and_des = []
+    cam_extrinsics_rodrigues = []
+    cam_extrinsics = []
     start = time.process_time()
-    for i in range(num_images):
-        posnew = poses[i].copy()
-        posnew[:3, :3] = np.transpose(posnew[:3, :3])
-        posnew[:3, 3] = np.matmul(-posnew[:3, :3], posnew[:3, 3]) 
-        #print("i=",i," ",poses[i][:3, 3])
 
-        img = np.array(dataset.get_cam0(i))
-        kp_tmp, des_tmp = orb.detectAndCompute(img, None)
-        img_kp_and_des.append([kp_tmp, des_tmp])
-        R, _ = np.asarray(cv2.Rodrigues(posnew[:3, :3]))
-        t = posnew[:3, 3].flatten()
+    for i in range(n_frames):
+        #Get camera extrinisc parameters
+        cam_pose = cam_poses[i].copy()
+        cam_extrinsic = inverse_T(cam_pose)
 
-        cam_params.append([R[0][0], R[1][0], R[2][0], t[0], t[1], t[2]])
-        cam_transformations.append(posnew)
+        R, _ = np.asarray(cv2.Rodrigues(cam_extrinsic[:3, :3]), dtype=object)
+        t = cam_extrinsic[:3, 3].flatten()
 
-    print("DetectAndComputes took: ", time.process_time() - start, " Seconds")
+        cam_extrinsics_rodrigues.append([R[0][0], R[1][0], R[2][0], t[0], t[1], t[2]])
+        cam_extrinsics.append(cam_extrinsic)
 
-    #print(hamming([1,1,0,2,0,1],[0,1,1,2,1,0])*6) # Hamming distance = 4 because 4 bits differ
+        #Get keypoints and descriptors
+        frame = np.array(dataset.get_cam0(i))
+        kp_tmp, des_tmp = orb.detectAndCompute(frame, None)
+        frames_kp_and_des.append([kp_tmp, des_tmp])
 
-    Qs, cam_idxs, Q_idxs, qs = BA_pre_processing_cam_n_points(img_kp_and_des, cam_transformations, 20, 7, 1)
 
+    print("DetectAndComputes plus computation of camera extrinsics took: ", time.process_time() - start, " Seconds")
+
+    #Genearate between keypoints and triangulated points along with cameras used for triangulation
+    print("Bundle adjustment preprocessing...")
+    start_BA_preprocess = time.process_time()
+    Qs, cam_idxs, Q_idxs, qs = BA_pre_processing_cam_n_points(frames_kp_and_des, cam_extrinsics, 20, 7, 1)
+    print("Bundle adjustment preprocessing took: ", time.process_time() - start_BA_preprocess, " Seconds")
 
     print("cam_idxs: ", cam_idxs.shape)
     print("Q_idxs: ", Q_idxs.shape)
@@ -435,31 +456,34 @@ def main():
     print(cam_idxs)
 
     
-    cam_params = np.array(cam_params).flatten()
-    print("old_cam1t: ", cam_params[3:6])
-    print("old_cam2t: ", cam_params[3+6:6+6])
-    for i in range(int(len(cam_params)/6)):
-        cam_params[i*6 + 3] += round(random.uniform(-0.003, 0.003)*1, 6) # x
-        #cam_params[i*6 + 4] += round(random.uniform(-0.01, 0.01)*1, 6)  # y
-        cam_params[i*6 + 5] += round(random.uniform(-0.5, 0.5)*1, 6)     # z
+    cam_extrinsics_rodrigues = np.array(cam_extrinsics_rodrigues).flatten()
 
-    cam_params = cam_params.reshape(int(cam_params.size/6), 6)
-    n_cams = cam_params.shape[0]
+    #Add noise to camera extrinsic parameters to simulate
+    #imperfect Visual Odometry
+    for i in range(int(len(cam_extrinsics_rodrigues)/6)):
+        #cam_extrinsics_rodrigues[i*6 + 3] += round(random.uniform(-0.003, 0.003)*1, 6) # x
+        #cam_params[i*6 + 4] += round(random.uniform(-0.01, 0.01)*1, 6)  # y
+        #cam_extrinsics_rodrigues[i*6 + 5] += round(random.uniform(-0.5, 0.5)*1, 6)     # z
+        pass
+
+    cam_extrinsics_rodrigues = cam_extrinsics_rodrigues.reshape(int(cam_extrinsics_rodrigues.size/6), 6)
+    n_cams = cam_extrinsics_rodrigues.shape[0]
     n_Qs = Qs.shape[0]
     print("n_cameras: {}".format(n_cams))
     print("n_points: {}".format(n_Qs))
     print("Total number of parameters: {}".format(6 * n_cams + 3 * n_Qs))
     print("Total number of residuals: {}".format(2 * qs.shape[0]))
 
-    # residual_init, residual_minimized, opt_params = bundle_adjustment(cam_params, Qs, cam_idxs, Q_idxs, qs)
+    # residual_init, residual_minimized, opt_params = bundle_adjustment(cam_extrinsics_rodrigues, Qs, cam_idxs, Q_idxs, qs)
     sparse_mat = sparsity_matrix(n_cams, n_Qs, cam_idxs, Q_idxs)
     plot_sparsity(sparse_mat)
-    residual_init, residual_minimized, opt_params = bundle_adjustment_with_sparsity(cam_params, Qs, cam_idxs, Q_idxs,
+    residual_init, residual_minimized, opt_params = bundle_adjustment_with_sparsity(cam_extrinsics_rodrigues, Qs, cam_idxs, Q_idxs,
                                                                                     qs, sparse_mat)
+    print("Bundle Adjustment took: ", time.process_time() - start_BA, " Seconds")
     # plot_residual_results(qs, residual_init,
     #                       residual_minimized)
 
-    x0 = np.hstack((cam_params.ravel(), Qs.ravel()))
+    x0 = np.hstack((cam_extrinsics_rodrigues.ravel(), Qs.ravel()))
     residual_init = objective(x0, n_cams, n_Qs, cam_idxs, Q_idxs, qs)
 
 
@@ -479,9 +503,9 @@ def main():
         xs_gt = np.append(xs_gt, pos[0])
         ys_gt = np.append(ys_gt, pos[1])
         zs_gt = np.append(zs_gt, pos[2])
-        xs_iniguess = np.append(xs_iniguess, cam_params[i][3])
-        ys_iniguess = np.append(ys_iniguess, cam_params[i][4])
-        zs_iniguess = np.append(zs_iniguess, cam_params[i][5])
+        xs_iniguess = np.append(xs_iniguess, cam_extrinsics_rodrigues[i][3])
+        ys_iniguess = np.append(ys_iniguess, cam_extrinsics_rodrigues[i][4])
+        zs_iniguess = np.append(zs_iniguess, cam_extrinsics_rodrigues[i][5])
         xs_est = np.append(xs_est, est[0])
         ys_est = np.append(ys_est, est[1])
         zs_est = np.append(zs_est, est[2])
