@@ -41,7 +41,7 @@ graph = Graphwrapper.graphstructure(gt_poses[0], infotest)
 
 VO = VisualOdometry(dataset)
 
-orb = cv2.ORB_create(1000)
+orb = cv2.ORB_create(500)
 
 FLANN_INDEX_LSH = 6
 index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
@@ -161,7 +161,7 @@ def update(_):
         print(enough_points)
 
         if enough_points:
-
+            print(current_img_idx)
             add_to_graph(transform, desc, kp, graph_size, keyframe_idx, graph, current_pose)
             current_pose = np.matmul(current_pose, transform)
 
@@ -173,9 +173,9 @@ def update(_):
                 #bundle adjustment
 
             # visualize_path(graph)
-            idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann) # Is not done
-            if loop_closure_found_bool:
-                pass
+            # idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann) # Is not done
+            # if loop_closure_found_bool:
+            #     pass
             #     perform_loop_closure(idx, graph)
             #     update_visualize_path(graph)
             prev_idx = current_img_idx
@@ -237,7 +237,7 @@ def update(_):
     
     return lines
 
-ani = FuncAnimation(fig, update, frames=frame, interval=1,
+ani = FuncAnimation(fig, update, frames=frame, interval=100,
                     init_func=init, blit=False)
 plt.show()
 print("Saving animation as GIF")

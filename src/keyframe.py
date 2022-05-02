@@ -5,12 +5,12 @@ from Graphwrapper import *
 
 
 
-def get_next_keyframe(dataset, i: int, graph: graphstructure, orb, graph_size):
+def get_next_keyframe(dataset, current_img_idx: int, graph: graphstructure, orb, graph_size):
 
 
 
     img_iter = 1
-    img_curr = np.array(dataset.get_cam0(i))
+    img_curr = np.array(dataset.get_cam0(current_img_idx))
     vertex_prev = graph.g.vertex(graph_size - 1)
 
     trackpoints = graph.v_keypoints[vertex_prev]
@@ -20,16 +20,17 @@ def get_next_keyframe(dataset, i: int, graph: graphstructure, orb, graph_size):
 
     while True:
         
-        if i + img_iter < dataset.frames.stop:
-            img_next = np.array(dataset.get_cam0(i + img_iter))
+        if current_img_idx + img_iter < dataset.frames.stop:
+            img_next = np.array(dataset.get_cam0(current_img_idx + img_iter))
         else:
             img_next = np.array(dataset.get_cam0(dataset.frames.stop - 1))
         
         tp1_l, tp2_l = track_keypoints(img_curr, img_next, trackpoints)
-        img_iter += 1
 
-        if len(tp1_l) < 300:
-            return i + img_iter
+        if len(tp1_l) < 2000:
+            return current_img_idx + img_iter
+        
+        img_iter += 1
 
 
 

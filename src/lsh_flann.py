@@ -82,7 +82,7 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
         index_list = [dmatch.imgIdx for dmatch in dmatches]
         occurence_count = Counter(index_list)
         all_occurences = occurence_count.values()
-        if max(all_occurences) > 100:
+        if max(all_occurences) > 300:
             most_occuring = occurence_count.most_common(1)[0][0]
             loop_closure_found = True
             print("Loop closure found!")
