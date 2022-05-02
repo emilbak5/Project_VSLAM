@@ -1,3 +1,4 @@
+from cgi import test
 import os
 from time import sleep
 from turtle import shape
@@ -564,13 +565,16 @@ for i, gt_pose in enumerate(tqdm(poses, unit="poses")):
 #Visu=plotting.VisualDataSource(gt_path, estimated_path)
 gt_path_reduced=gt_path[0:-5]
 estimated_path_reduced=estimated_path[0:-5]
-
 print(vo.K_l)
 print(vo.K_r)
 
 
+
+
+
 @count()
 def callback(t):
+    
     #for i in range(len(Visu.gt_path)-1):
     gt_path = np.array(Visu.gt_path[t+1])
     pred_path = np.array(Visu.pred_path[t+1])
@@ -592,15 +596,16 @@ def callback(t):
     diff = np.linalg.norm(gt_path - pred_path, axis=1)
     print(len(diff))
     
-
+    colorArray=['blue']
 
     data=dict(gtx=gt_path[:, 0], gty=gt_path[:, 1],
                                         px=pred_path[:, 0], py=pred_path[:, 1],
                                         diffx=np.arange(len(diff)), diffy=diff,
-                                        disx=xs, disy=ys)
+                                        disx=xs, disy=ys, color=colorArray)
     print(data)
     Visu.source.stream(data,100)
-    print(t)
+    #test123=test123+1
+    #print(test123)
     
 #Visu.visualize_paths(gt_path_reduced, estimated_path_reduced, "Stereo Visual Odometry",
 #                        file_out=os.path.basename(basedir) + 'll'".html")
@@ -659,8 +664,9 @@ offset = Slider(title="offset", value=0.0, start=-5.0, end=5.0, step=0.1)
 # server = Server({'/': main}, num_procs=4)
 # server.start()
 #button.on_click(callback)
+curdoc().theme='dark_minimal'
 
-curdoc().add_root(row(Visu.plot,offset,button))
+curdoc().add_root(Visu.plot)
 curdoc().title = "OHLC"
 curdoc().add_periodic_callback(callback,500)
 

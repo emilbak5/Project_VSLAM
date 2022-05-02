@@ -43,15 +43,17 @@ class VisualDataSource():
         xs = list(np.array([gt_x, pred_x]).T)
         ys = list(np.array([gt_y, pred_y]).T)
 
+        colorArray= ['blue']
+
         diff = np.linalg.norm(gt_path - pred_path, axis=1)
         self.source = ColumnDataSource(data=dict(gtx=gt_path[:, 0], gty=gt_path[:, 1],
                                             px=pred_path[:, 0], py=pred_path[:, 1],
                                             diffx=np.arange(len(diff)), diffy=diff,
-                                            disx=xs, disy=ys))
+                                            disx=xs, disy=ys, color=colorArray))
 
         fig1 = figure(title="Paths", tools=tools, match_aspect=True, width_policy="max", toolbar_location="above",
                     x_axis_label="x", y_axis_label="y")
-        fig1.circle("gtx", "gty", source=self.source, color="blue", hover_fill_color="firebrick", legend_label="GT")
+        fig1.circle("gtx", "gty", source=self.source, color='color', hover_fill_color="firebrick", legend_label="GT")
         fig1.line("gtx", "gty", source=self.source, color="blue", legend_label="GT")
 
         fig1.circle("px", "py", source=self.source, color="green", hover_fill_color="firebrick", legend_label="Pred")
