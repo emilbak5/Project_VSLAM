@@ -25,7 +25,8 @@ from bokeh.models.widgets import Panel, Tabs
 from bokeh.driving import count
 
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FuncAnimation, PillowWriter
+
 import matplotlib
 
 
@@ -190,7 +191,8 @@ ani = FuncAnimation(fig, update, frames=frame, interval=1,
                     init_func=init, blit=True)
 plt.show()
 print("Saving animation as GIF")
-ani.save('../animation.mp4', fps=5)
+writergif = PillowWriter(fps=30) 
+ani.save("animation.gif", writer=writergif)
 print("Annimation saved")
 
     
