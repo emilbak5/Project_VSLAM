@@ -65,7 +65,7 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
     loop_closure_found = False
 
     if graph_size > 20:
-        print ("Matching...")
+        # print ("Matching...")
 
         vertex = graph.g.vertex(graph_size - 1)
 

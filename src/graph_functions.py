@@ -3,7 +3,7 @@ from src.Graphwrapper import *
 
 
 
-def add_to_graph(transform, desc, kp, i, keyframe_idx, graph: graphstructure):
+def add_to_graph(transform, desc, kp, i, keyframe_idx, graph: graphstructure, current_pose):
 
 
     kp = cv2.KeyPoint_convert(kp)
@@ -16,7 +16,8 @@ def add_to_graph(transform, desc, kp, i, keyframe_idx, graph: graphstructure):
     graph.v_keypoints[vertex] = kp
     graph.v_image_idx[vertex] = keyframe_idx
     
-    graph.e_trans[edge] = transform
+    graph.e_trans[edge] = np.matmul(current_pose, transform)
+
 
     x = 5
     
