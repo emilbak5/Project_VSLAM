@@ -24,7 +24,7 @@ from pyrsistent import v
 # useful commands
 # g.get_edges(), gives you a matrix of the different edges, and their vertices in order
 class graphstructure():
-    def __init__(self,pose,virtuelInfo):
+    def __init__(self,pose,image_features, image_descriptors):
 
         self.g=Graph(directed=False)
 
