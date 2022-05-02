@@ -26,12 +26,13 @@ from bokeh.driving import count
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import matplotlib
 
 
 print("Project in VSLAM")
 
 
-num_images = 4000
+num_images = 4540
 dataset = get_dataset(num_images)
 gt_poses = dataset.poses
 infotest=np.array([1,2,3])
@@ -126,6 +127,7 @@ def init():
     return lines
 
 i = 0
+frame = range(0, num_images)
 def update(_):
     global i
     global prev_max_x
@@ -133,55 +135,63 @@ def update(_):
     global prev_min_x
     global prev_min_y
     global gt_poses
+    global num_images
+
+    if i < num_images:
+        gt_path = gt_poses[i][0, 3], gt_poses[i][2, 3]
+        gt_path_x, gt_path_y = [gt_path[0], gt_path[1]]
+
+        # esti_path_x = gt_data_x + 10
+        # esti_path_y = gt_data_y + 10
+
+        gt_data_x.append(gt_path_x)
+        gt_data_y.append(gt_path_y)
+        esti_data_x.append(gt_path_x + 40)
+        esti_data_y.append(gt_path_y + 40)
 
 
-    gt_path = gt_poses[i][0, 3], gt_poses[i][2, 3]
-    gt_path_x, gt_path_y = [gt_path[0], gt_path[1]]
-
-    # esti_path_x = gt_data_x + 10
-    # esti_path_y = gt_data_y + 10
-
-    gt_data_x.append(gt_path_x)
-    gt_data_y.append(gt_path_y)
-    esti_data_x.append(gt_path_x + 10)
-    esti_data_y.append(gt_path_y + 10)
+        gt_line.set_data(gt_data_x, gt_data_y)
+        esti_line.set_data(esti_data_x, esti_data_y)
+        # if len(xdata) % 10 == 0:
+        #     xdata[i-5] = 4
+        #     ydata[i-5] = -0.5
 
 
-    gt_line.set_data(gt_data_x, gt_data_y)
-    esti_line.set_data(esti_data_x, esti_data_y)
-    # if len(xdata) % 10 == 0:
-    #     xdata[i-5] = 4
-    #     ydata[i-5] = -0.5
+        # l = matplotlib.lines.Line2D([gt_path_x, gt_path_x + 10], [gt_path_y, gt_path_y + 10])
+        # ax.add_line(l)
+        
+
+        border = 50
+        if gt_path_x + border > prev_max_x:
+            ax.set_xlim(prev_min_x, gt_path_x + border)
+            prev_max_x = gt_path_x + border
+
+        if gt_path_x - border < prev_min_x:
+            ax.set_xlim(gt_path_x - border, prev_max_x)
+            prev_min_x = gt_path_x - border
+
+        if gt_path_y + border > prev_max_y:
+            ax.set_ylim(prev_min_y, gt_path_y + border)
+            prev_max_y = gt_path_y + border
+
+        if gt_path_y - border < prev_min_y:
+            ax.set_ylim(gt_path_y - border, prev_max_y)
+            prev_min_y = gt_path_y - border
+
+
+        i += 100
+
+
+
     
+    return lines
 
-    border = 10
-    if gt_path_x + border > prev_max_x:
-        ax.set_xlim(prev_min_x, gt_path_x + border)
-        prev_max_x = gt_path_x + border
-
-    if gt_path_x - border < prev_min_x:
-        ax.set_xlim(gt_path_x - border, prev_max_x)
-        prev_min_x = gt_path_x - border
-
-    if gt_path_y + border > prev_max_y:
-        ax.set_ylim(prev_min_y, gt_path_y + border)
-        prev_max_y = gt_path_y + border
-
-    if gt_path_y - border < prev_min_y:
-        ax.set_ylim(gt_path_y - border, prev_max_y)
-        prev_min_y = gt_path_y - border
-
-    i += 20
-
-    test = 0
-    for i in range(10):
-        test += 10
-    
-    return lines,
-
-ani = FuncAnimation(fig, update, frames=None, interval=10,
-                    init_func=init, blit=False)
+ani = FuncAnimation(fig, update, frames=frame, interval=1,
+                    init_func=init, blit=True)
 plt.show()
+print("Saving animation as GIF")
+ani.save('../animation.mp4', fps=5)
+print("Annimation saved")
 
     
 
