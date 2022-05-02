@@ -7,17 +7,23 @@ from Graphwrapper import *
 
 def get_next_keyframe(dataset, i: int, graph: graphstructure, orb, graph_size):
 
+
+
     img_iter = 1
     img_curr = np.array(dataset.get_cam0(i))
     vertex_prev = graph.g.vertex(graph_size - 1)
 
     trackpoints = graph.v_keypoints[vertex_prev]
+
+    
     
 
     while True:
         
-        img_next = np.array(dataset.get_cam0(i + img_iter))
-        
+        if i + img_iter < dataset.frames.stop:
+            img_next = np.array(dataset.get_cam0(i + img_iter))
+        else:
+            img_next = np.array(dataset.get_cam0(dataset.frames.stop - 1))
         
         tp1_l, tp2_l = track_keypoints(img_curr, img_next, trackpoints)
         img_iter += 1
