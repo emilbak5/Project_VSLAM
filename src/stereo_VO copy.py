@@ -1,11 +1,38 @@
+from cgi import test
+import os
+from time import sleep
+from turtle import shape
+from anyio import current_default_worker_thread_limiter
+import numpy as np
 import cv2
 from scipy.optimize import least_squares
+from tomlkit import boolean, key
+import dummy_graph
+import sys
+import pykitti
+
+sys.path.insert(1, os.getcwd()) #Use this to get the lib module to work (gets current working dir)
+
+from lib.visualization import plotting
+from lib.visualization.video import play_trip
+    
+from tqdm import tqdm
+
+#from bokeh.plotting import curdoc
+
+#from bokeh.layouts import column
+from bokeh.models import Button
+from bokeh.server.server import Server
 
 
-from src.Graphwrapper import *
+from bokeh.models.widgets import Panel, Tabs
+from bokeh.io import output_file, show, save
+from bokeh.plotting import figure, ColumnDataSource, curdoc
+from bokeh.layouts import column, layout, gridplot, row
+from bokeh.models import Div, WheelZoomTool, Slider
+from bokeh.models.widgets import Panel, Tabs
+from bokeh.driving import count
 
-
-# def stereo_vo(kp, desc, dataset, graph: graphstructure, idx, prev_idx):
 
 class VisualOdometry():
     def __init__(self, dataset: pykitti.odometry):
@@ -41,6 +68,68 @@ class VisualOdometry():
 
 
 
+    @staticmethod
+    def _load_calib(filepath):
+        """
+        Loads the calibration of the camera
+        Parameters
+        ----------
+        filepath (str): The file path to the camera file
+
+        Returns
+        -------
+        K_l (ndarray): Intrinsic parameters for left camera. Shape (3,3)
+        P_l (ndarray): Projection matrix for left camera. Shape (3,4)
+        K_r (ndarray): Intrinsic parameters for right camera. Shape (3,3)
+        P_r (ndarray): Projection matrix for right camera. Shape (3,4)
+        """
+        with open(filepath, 'r') as f:
+            params = np.fromstring(f.readline(), dtype=np.float64, sep=' ')
+            P_l = np.reshape(params, (3, 4))
+            K_l = P_l[0:3, 0:3]
+            params = np.fromstring(f.readline(), dtype=np.float64, sep=' ')
+            P_r = np.reshape(params, (3, 4))
+            K_r = P_r[0:3, 0:3]
+        return K_l, P_l, K_r, P_r
+
+    @staticmethod
+    def _load_poses(filepath):
+        """
+        Loads the GT poses
+
+        Parameters
+        ----------
+        filepath (str): The file path to the poses file
+
+        Returns
+        -------
+        poses (ndarray): The GT poses. Shape (n, 4, 4)
+        """
+        poses = []
+        with open(filepath, 'r') as f:
+            for line in f.readlines():
+                T = np.fromstring(line, dtype=np.float64, sep=' ')
+                T = T.reshape(3, 4)
+                T = np.vstack((T, [0, 0, 0, 1]))
+                poses.append(T)
+        return poses
+
+    @staticmethod
+    def _load_images(filepath):
+        """
+        Loads the images
+
+        Parameters
+        ----------
+        filepath (str): The file path to image dir
+
+        Returns
+        -------
+        images (list): grayscale images. Shape (n, height, width)
+        """
+        image_paths = [os.path.join(filepath, file) for file in sorted(os.listdir(filepath))]
+        images = [cv2.imread(path, cv2.IMREAD_GRAYSCALE) for path in image_paths]
+        return images
 
     @staticmethod
     def _form_transf(R, t):
@@ -357,9 +446,21 @@ class VisualOdometry():
         
         return kp1_l[kp1_l_idx]
 
+    def init(self, init_pose):
+        img1_l = np.array(self.dataset.get_cam0(0))
+        # Get teh tiled keypoints
+        kp1_l = self.get_tiled_keypoints(img1_l, 10, 20)
+        
+        points = cv2.KeyPoint_convert(kp1_l)
+    
+        self.prev_frame = dummy_graph.Frame(points, init_pose)
 
-    def get_pose(self, kp, desc, dataset, graph: graphstructure, current_img_idx, keyframe_idx):
+        kp1_l = self.kp_left_in_right(kp1_l, self.disparities[0])
 
+        return dummy_graph.Frame(kp1_l, init_pose)
+
+
+    def get_pose(self, i):
         """
         Calculates the transformation matrix for the i'th frame
 
@@ -372,38 +473,204 @@ class VisualOdometry():
         transformation_matrix (ndarray): The transformation matrix. Shape (4,4)
         """
         # Get the i-1'th image and i'th image
-
+        img1_l = np.array(self.dataset.get_cam0(i - 1))
+        img2_l = np.array(self.dataset.get_cam0(i))
         #img1_l, img2_l = self.images_l[i - 1:i + 1]
 
         # Get teh tiled keypoints
-        vertex_0 = graph.g.vertex(len(graph.g.get_vertices()) - 1)
-        trackpoints1 = graph.v_keypoints[vertex_0]
-
-
-        img1_l = np.array(self.dataset.get_cam0(current_img_idx))
-        img2_l = np.array(self.dataset.get_cam0(keyframe_idx))
+        trackpoints1 = self.prev_frame.points
 
         # Track the keypoints
         tp1_l, tp2_l = self.track_keypoints(img1_l, img2_l, trackpoints1)
 
         
         # Calculate the disparitie
-        self.disparities.append(np.divide(self.disparity.compute(img2_l, np.array(self.dataset.get_cam1(keyframe_idx))).astype(np.float32), 16))
+        self.disparities.append(np.divide(self.disparity.compute(img2_l, np.array(self.dataset.get_cam1(i))).astype(np.float32), 16))
 
         # Calculate the right keypoints
-
-        idx = len(graph.g.get_vertices())
-        tp1_l, tp1_r, tp2_l, tp2_r = self.calculate_right_qs(tp1_l, tp2_l, self.disparities[idx - 1], self.disparities[idx])
+        tp1_l, tp1_r, tp2_l, tp2_r = self.calculate_right_qs(tp1_l, tp2_l, self.disparities[i - 1], self.disparities[i])
 
         # Calculate the 3D points
         Q1, Q2, enough_points = self.calc_3d(tp1_l, tp1_r, tp2_l, tp2_r)
         if enough_points:
         # Estimate the transformation matrix
             transformation_matrix = self.estimate_pose(tp1_l, tp2_l, Q1, Q2)
+            ##### Keyframe descision
+            kp2_l = np.array([])
+            if(len(tp2_l) < 200):
+                kp2_l = self.get_tiled_keypoints(img2_l, 10, 20)
+                kp2_l = self.kp_left_in_right(kp2_l, self.disparities[i])
+                tp2_l = cv2.KeyPoint_convert(kp2_l)
+            
+            self.prev_frame = dummy_graph.Frame(tp2_l, transformation_matrix)
 
-            return transformation_matrix, enough_points
-        else:
-            enough_points = False
-            return 0, enough_points
+            frame = dummy_graph.Frame(kp2_l, transformation_matrix)
+
+            return frame, enough_points
+        else: 
+            return dummy_graph.Frame(np.ndarray([]), np.identity(4)), enough_points
 
 
+    
+
+#def main():
+# data_dir = 'data/KITTI_sequence_2'  # Try KITTI_sequence_2
+# vo = VisualOdometry(data_dir)
+
+#play_trip(vo.images_l, vo.images_r)  # Comment out to not play the trip
+basedir = './data'
+sequence = '00'
+#data_dir = './data/sequences/00'  # Try KITTI_sequence_2 t oo
+frames = range(0, 10, 1) #Indicate how many frames to use
+dataset = pykitti.odometry(basedir, sequence, frames=frames)#, frames=frames)
+
+poses = dataset.poses
+
+vo = VisualOdometry(dataset)
+graph = dummy_graph.Graph()
+gt_path = []
+estimated_path = []
+keypoint_path = []
+enough_points = None
+frame = None
+for i, gt_pose in enumerate(tqdm(poses, unit="poses")):
+    if i < 1:
+        cur_pose = gt_pose
+        keyframe = vo.init(cur_pose)
+        graph.init(keyframe)
+        gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
+        estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+        keypoint_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+        Visu=plotting.VisualDataSource(gt_path, estimated_path)
+        Visu.visualize_paths(gt_path, estimated_path, "Stereo Visual Odometry",
+                        file_out=os.path.basename(basedir) + 'll'".html")
+
+
+        
+    else:
+        frame, enough_points = vo.get_pose(i)
+        if enough_points:    
+            cur_pose = np.matmul(cur_pose, frame.pose)
+            graph.add_edge(frame.pose)
+            graph.add_vertex(dummy_graph.Frame(frame.points, cur_pose))
+            gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
+            estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+            #callback(gt_path,estimated_path,Visu)
+            if np.size(frame.points) > 0:
+                keypoint_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+        else:  
+            pass
+    #sleep(5)
+#Visu=plotting.VisualDataSource(gt_path, estimated_path)
+gt_path_reduced=gt_path[0:-5]
+estimated_path_reduced=estimated_path[0:-5]
+print(vo.K_l)
+print(vo.K_r)
+
+
+
+
+@count()
+def callback(t):
+    
+    #for i in range(len(Visu.gt_path)-1):
+    gt_path = np.array(Visu.gt_path[t+1])
+    pred_path = np.array(Visu.pred_path[t+1])
+
+    gt_x, gt_y = gt_path.T
+    pred_x, pred_y = pred_path.T
+
+    gt_path=gt_path.reshape(-1,2)
+    pred_path=pred_path.reshape(-1,2)
+
+    temp1=np.array([gt_x, pred_x]).T
+    xs = list(temp1.reshape(-1,2))
+
+    temp2=np.array([gt_y, pred_y]).T
+    ys = list(temp2.reshape(-1,2))
+
+    print("test")
+
+    diff = np.linalg.norm(gt_path - pred_path, axis=1)
+    print(len(diff))
+    
+    colorArray=['blue']
+
+    data=dict(gtx=gt_path[:, 0], gty=gt_path[:, 1],
+                                        px=pred_path[:, 0], py=pred_path[:, 1],
+                                        diffx=np.arange(len(diff)), diffy=diff,
+                                        disx=xs, disy=ys, color=colorArray)
+    print(data)
+    Visu.source.stream(data,100)
+    #test123=test123+1
+    #print(test123)
+    
+#Visu.visualize_paths(gt_path_reduced, estimated_path_reduced, "Stereo Visual Odometry",
+#                        file_out=os.path.basename(basedir) + 'll'".html")
+#Visu.visualize_paths(gt_path, estimated_path, "Stereo Visual Odometry",
+#                         file_out=os.path.basename(basedir) + 'll'".html")
+#print(gt_path_reduced)
+#print(gt_path[0])
+#-----
+# def visual_path():
+# gt_path_reduced = np.array(gt_path_reduced)
+# pred_path_reduced = np.array(estimated_path_reduced)
+# #key_path = np.array(key_path)
+
+# tools = "pan,wheel_zoom,box_zoom,box_select,lasso_select,reset"
+
+# gt_x, gt_y = gt_path_reduced.T
+# pred_x, pred_y = pred_path_reduced.T
+
+# #xs = list(np.array([gt_x, pred_x, key_x]).T)
+# #ys = list(np.array([gt_y, pred_y, key_y]).T)
+
+# xs = list(np.array([gt_x, pred_x]).T)
+# ys = list(np.array([gt_y, pred_y]).T)
+
+# diff = np.linalg.norm(gt_path_reduced - pred_path_reduced, axis=1)
+# source = ColumnDataSource(data=dict(gtx=gt_path_reduced[:, 0], gty=gt_path_reduced[:, 1],
+#                                     px=pred_path_reduced[:, 0], py=pred_path_reduced[:, 1],
+#                                     diffx=np.arange(len(diff)), diffy=diff,
+#                                     disx=xs, disy=ys))
+
+# fig1 = figure(title="Paths", tools=tools, match_aspect=True, width_policy="max", toolbar_location="above",
+#             x_axis_label="x", y_axis_label="y")
+# fig1.circle("gtx", "gty", source=source, color="blue", hover_fill_color="firebrick", legend_label="GT")
+# fig1.line("gtx", "gty", source=source, color="blue", legend_label="GT")
+
+# fig1.circle("px", "py", source=source, color="green", hover_fill_color="firebrick", legend_label="Pred")
+# fig1.line("px", "py", source=source, color="green", legend_label="Pred")
+
+# fig1.multi_line("disx", "disy", source=source, legend_label="Error", color="red", line_dash="dashed")
+# fig1.legend.click_policy = "hide"
+
+
+
+#----
+#curdoc().add_root(Visu.plot)
+
+#curdoc().add_periodic_callback(callback, 5000)
+#curdoc().title = "OHLC"
+# for i in range(5):
+
+#     Visu.visualize_update(gt_path[i+5],estimated_path[i+5])
+button= Button(label="Accept")
+offset = Slider(title="offset", value=0.0, start=-5.0, end=5.0, step=0.1)
+    
+    
+# server = Server({'/': main}, num_procs=4)
+# server.start()
+#button.on_click(callback)
+curdoc().theme='dark_minimal'
+
+curdoc().add_root(Visu.plot)
+curdoc().title = "OHLC"
+curdoc().add_periodic_callback(callback,500)
+
+#if __name__ == "__main__":
+    #main()
+    # print('Opening Bokeh application on http://localhost:5006/')
+
+    # server.io_loop.add_callback(server.show, "/")
+    # server.io_loop.start()

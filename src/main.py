@@ -16,13 +16,6 @@ from bokeh.models import Button
 from bokeh.server.server import Server
 
 
-from bokeh.models.widgets import Panel, Tabs
-from bokeh.io import output_file, show, save
-from bokeh.plotting import figure, ColumnDataSource, curdoc
-from bokeh.layouts import column, layout, gridplot, row
-from bokeh.models import Div, WheelZoomTool, Slider
-from bokeh.models.widgets import Panel, Tabs
-from bokeh.driving import count
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
