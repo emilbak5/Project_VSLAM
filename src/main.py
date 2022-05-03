@@ -158,8 +158,6 @@ def update(_):
         add_to_lsh_table(desc, flann)
         transform, enough_points = VO.get_pose(kp, desc, dataset, graph, current_img_idx, keyframe_idx)
 
-        print(enough_points)
-
         if enough_points:
             print(current_img_idx)
             add_to_graph(transform, desc, kp, graph_size, keyframe_idx, graph, current_pose)
@@ -178,8 +176,8 @@ def update(_):
             #     pass
             #     perform_loop_closure(idx, graph)
             #     update_visualize_path(graph)
-            prev_idx = current_img_idx
-            current_img_idx = keyframe_idx
+            # prev_idx = current_img_idx
+            # current_img_idx = keyframe_idx
 
 
 
@@ -227,6 +225,8 @@ def update(_):
             if gt_path_y - border < prev_min_y:
                 ax.set_ylim(gt_path_y - border, prev_max_y)
                 prev_min_y = gt_path_y - border
+        else:
+            print(enough_points)
 
 
 
@@ -238,7 +238,7 @@ def update(_):
     return lines
 
 ani = FuncAnimation(fig, update, frames=frame, interval=100,
-                    init_func=init, blit=False)
+                    init_func=init, blit=True)
 plt.show()
 print("Saving animation as GIF")
 writergif = PillowWriter(fps=30) 
@@ -249,99 +249,6 @@ print("Annimation saved")
 
 
 
-# current_img_idx = 1
-# graph_size = 1
-# end_of_program = False
-
-# #@count()
-# def callback():
-#     global current_img_idx
-#     global graph_size
-#     global num_images
-#     global prev_idx
-#     global end_of_program
-#     #for i in range(len(Visu.gt_path)-1):
-#     # gt_path = np.array(Visu.gt_path[t+1])
-#     # pred_path = np.array(Visu.pred_path[t+1])
-# # while current_img_idx <= num_images - 2:        
-#     if current_img_idx < num_images - 2:
-#         keyframe_idx = get_next_keyframe(dataset, current_img_idx, graph, orb, graph_size)
-
-
-#         kp, desc = get_descripters(keyframe_idx, dataset, orb)
-#         add_to_lsh_table(desc, flann)
-#         transform, _ = VO.get_pose(kp, desc, dataset, graph, current_img_idx, prev_idx)
-#         add_to_graph(transform, desc, kp, graph_size, keyframe_idx, graph)
-#         graph_size += 1
-
-
-#         if graph_size % 7 == 0:
-#             pass
-#             #bundle adjustment
-
-#         # visualize_path(graph)
-#         idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann) # Is not done
-#         if loop_closure_found_bool:
-#             pass
-#         #     perform_loop_closure(idx, graph)
-#         #     update_visualize_path(graph)
-#         prev_idx = current_img_idx
-#         current_img_idx = keyframe_idx
-
-#         #print (graph_size)
-#         print(current_img_idx)
-
-#     else:
-#         if end_of_program == False:
-#             print("End of program")
-#         end_of_program = True
-
-
-#     # gt_x, gt_y = gt_path.T
-#     #pred_x, pred_y = transform.T
- 
-#     pred_path = np.array([transform[0, 3], transform[2, 3]])
-#     pred_path_x, pred_path_y = pred_path[0], pred_path[1]
-
-
-#     gt_path = gt_poses[keyframe_idx]
-#     gt_path = np.array([gt_path[0, 3], gt_path[2, 3]])
-
-
-#     gt_path_x, gt_path_y = [gt_path[0], gt_path[1]]
-
-    
-#     pred_path=pred_path.reshape(-1,2)
-#     gt_path=gt_path.reshape(-1,2)
-    
-    
-#     temp1=np.array([gt_path_x, pred_path_x]).T
-#     xs = list(temp1.reshape(-1,2))
-
-#     temp2=np.array([gt_path_y, pred_path_y]).T
-#     ys = list(temp2.reshape(-1,2))
-
-#     # print("test")
-
-#     diff = np.linalg.norm(gt_path - pred_path, axis=1)
-#     print(len(diff))
-    
-#     colorArray=['blue']
-
-#     data=dict(gtx=gt_path[:, 0], gty=gt_path[:, 1],
-#                                         px=pred_path[:, 0], py=pred_path[:, 1],
-#                                         diffx=np.arange(len(diff)), diffy=diff,
-#                                         disx=xs, disy=ys, color=colorArray)
-
-#     #print(data)
-#     Visu.source.stream(data,100)
-
-# curdoc().theme='dark_minimal'
-
-# curdoc().add_root(Visu.plot)
-# curdoc().title = "OHLC"
-# curdoc().add_periodic_callback(callback,5000)
-# print("here")
 
 
 
