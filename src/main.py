@@ -123,6 +123,8 @@ def init():
 
 i = 0
 frame = range(0, num_images)
+
+
 def update(_):
     global i
     global prev_max_x
@@ -232,7 +234,7 @@ def update(_):
     return lines
 
 ani = FuncAnimation(fig, update, frames=frame, interval=100,
-                    init_func=init, blit=False, save_count=num_images)
+                    init_func=init, blit=False)#, save_count=num_images)
 plt.show()
 print("Saving animation as GIF")
 writergif = PillowWriter(fps=30) 
