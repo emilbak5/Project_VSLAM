@@ -26,7 +26,7 @@ import matplotlib
 print("Project in VSLAM")
 
 
-num_images = 4540
+num_images = 15
 dataset = get_dataset(num_images)
 gt_poses = dataset.poses
 infotest=np.array([1,2,3])
@@ -34,12 +34,12 @@ graph = Graphwrapper.graphstructure(gt_poses[0], infotest)
 
 VO = VisualOdometry(dataset)
 
-orb = cv2.ORB_create(500)
+orb = cv2.ORB_create(2000)
 
 FLANN_INDEX_LSH = 6
 index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
 search_params = dict(checks=50)
-flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams={})
+flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
 
 
 
@@ -118,6 +118,7 @@ def init():
 
     ax.set_xlim(-10, 10)
     ax.set_ylim(-10, 10)
+    ax.grid()
     return lines
 
 i = 0
@@ -231,7 +232,7 @@ def update(_):
     return lines
 
 ani = FuncAnimation(fig, update, frames=frame, interval=100,
-                    init_func=init, blit=True)
+                    init_func=init, blit=False, save_count=num_images)
 plt.show()
 print("Saving animation as GIF")
 writergif = PillowWriter(fps=30) 
