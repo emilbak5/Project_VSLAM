@@ -19,6 +19,9 @@ from bokeh.server.server import Server
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
+from matplotlib import rcParams
+rcParams['animation.convert_path'] = r'/usr/local/bin/convert'
+
 
 import matplotlib
 
@@ -26,7 +29,7 @@ import matplotlib
 print("Project in VSLAM")
 
 
-num_images = 15
+num_images = 4000
 dataset = get_dataset(num_images)
 gt_poses = dataset.poses
 infotest=np.array([1,2,3])
@@ -122,7 +125,7 @@ def init():
     return lines
 
 i = 0
-frame = range(0, num_images)
+frame = range(0, num_images-1)
 
 
 def update(_):
@@ -137,10 +140,11 @@ def update(_):
     global current_img_idx
     global prev_idx
     global current_pose
+    global keyframe_idx
 
 
 
-    if current_img_idx < num_images:
+    if current_img_idx < num_images - 1:
         gt_path = gt_poses[current_img_idx][0, 3], gt_poses[current_img_idx][2, 3]
         gt_path_x, gt_path_y = [gt_path[0], gt_path[1]]
         gt_data_x.append(gt_path_x)
@@ -233,12 +237,12 @@ def update(_):
     
     return lines
 
-ani = FuncAnimation(fig, update, frames=frame, interval=100,
-                    init_func=init, blit=False)#, save_count=num_images)
-plt.show()
+ani = FuncAnimation(fig, update, frames=num_images, interval=1000,
+                    init_func=init, blit=True, repeat=False, save_count=num_images)
+#plt.show()
 print("Saving animation as GIF")
 writergif = PillowWriter(fps=30) 
-ani.save("animation.gif")
+ani.save("animation.gif", writer='imagemagick')
 print("Annimation saved")
 
     

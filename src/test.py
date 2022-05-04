@@ -1,10 +1,13 @@
+from cv2 import repeat
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib import rcParams
+rcParams['animation.convert_path'] = r'/usr/local/bin/convert'
 
 fig, ax = plt.subplots()
 xdata, ydata = [], []
-ln, = plt.plot([], [], marker='o')
+ln, = plt.plot([], [], 'ro')
 i = 0
 prev_max_x = 0
 prev_min_x = 0
@@ -27,9 +30,9 @@ def update(frame):
     xdata.append(frame)
     ydata.append(np.sin(frame))
     ln.set_data(xdata, ydata)
-    if len(xdata) % 10 == 0:
-        xdata[i-5] = 4
-        ydata[i-5] = -0.5
+    # if len(xdata) % 10 == 0:
+    #     xdata[i-5] = 4
+    #     ydata[i-5] = -0.5
     
 
     if frame + 0.5 > prev_max_x:
@@ -53,5 +56,5 @@ def update(frame):
     return ln,
 
 ani = FuncAnimation(fig, update, frames=np.linspace(0, 2*np.pi, 128),
-                    init_func=init, blit=False)
-plt.show()
+                    init_func=init, blit=False, repeat=False, interval = 10)# save_count=1000)
+ani.save("test.mp4")
