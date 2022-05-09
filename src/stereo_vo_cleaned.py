@@ -40,7 +40,7 @@ class VisualOdometry():
         # create BFMatcher object
         self.bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 
-        self.orb = cv2.ORB_create(nfeatures=100)
+        self.orb = cv2.ORB_create(nfeatures=10000)
 
     @staticmethod
     def _form_transf(R, t):
@@ -91,7 +91,7 @@ class VisualOdometry():
         # plt.imshow(img3),plt.show()
         # #cv2.waitKey(0)
 
-        kp_matches = np.float32([ [kp1[m.queryIdx].pt, kp2[m.trainIdx].pt] for m in matches[:50] ])
+        kp_matches = np.float32([ [kp1[m.queryIdx].pt, kp2[m.trainIdx].pt] for m in matches ])
 
         return kp_matches
     
@@ -114,32 +114,32 @@ class VisualOdometry():
         inlier_matches = np.array([match for index, match in enumerate(matches) if mask[index]])
 
         ### VISUALISATION ###
-        # inlier_kp1 = inlier_matches[:,0]
-        # inlier_kp2 = inlier_matches[:,1]
+        inlier_kp1 = inlier_matches[:,0]
+        inlier_kp2 = inlier_matches[:,1]
 
-        # n_arr = []
-        # for i in range(len(inlier_kp1)):
-        #     random_color=list(np.random.choice(range(255),size=3))
-        #     n_arr.append(random_color)
-        # n_arr = np.array(n_arr)
+        n_arr = []
+        for i in range(len(inlier_kp1)):
+            random_color=list(np.random.choice(range(255),size=3))
+            n_arr.append(random_color)
+        n_arr = np.array(n_arr)
 
-        # i = 0
-        # image = cv2.cvtColor(img1,cv2.COLOR_GRAY2RGB)
-        # for kp in inlier_kp1:
-        #     color = (int(n_arr[i,0]), int(n_arr[i,1]), int(n_arr[i,2]))
-        #     image = cv2.circle(image, (int(kp[0]),int(kp[1])), radius=4, color=color, thickness=2)
-        #     i += 1
-        # cv2.imshow("Image 1", image)
+        i = 0
+        image = cv2.cvtColor(img1,cv2.COLOR_GRAY2RGB)
+        for kp in inlier_kp1:
+            color = (int(n_arr[i,0]), int(n_arr[i,1]), int(n_arr[i,2]))
+            image = cv2.circle(image, (int(kp[0]),int(kp[1])), radius=4, color=color, thickness=2)
+            i += 1
+        cv2.imshow("Image 1", image)
 
-        # i = 0
-        # image = cv2.cvtColor(img2,cv2.COLOR_GRAY2RGB)
-        # for kp in inlier_kp2:
-        #     color = (int(n_arr[i,0]), int(n_arr[i,1]), int(n_arr[i,2]))
-        #     image = cv2.circle(image, (int(kp[0]),int(kp[1])), radius=4, color=color, thickness=2)
-        #     i += 1
-        # cv2.imshow("Image 2", image)
+        i = 0
+        image = cv2.cvtColor(img2,cv2.COLOR_GRAY2RGB)
+        for kp in inlier_kp2:
+            color = (int(n_arr[i,0]), int(n_arr[i,1]), int(n_arr[i,2]))
+            image = cv2.circle(image, (int(kp[0]),int(kp[1])), radius=4, color=color, thickness=2)
+            i += 1
+        cv2.imshow("Image 2", image)
 
-        # cv2.waitKey(0)
+        cv2.waitKey(0)
 
         return essential_matrix, inlier_matches     
 

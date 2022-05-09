@@ -25,7 +25,7 @@ def main():
 
     VO = VisualOdometry(dataset)
 
-    orb = cv2.ORB_create(nfeatures=100)
+    orb = cv2.ORB_create(nfeatures=10000)
 
     FLANN_INDEX_LSH = 6
     index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
