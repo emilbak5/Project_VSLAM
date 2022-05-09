@@ -1,8 +1,13 @@
 import cv2
 from scipy.optimize import least_squares
 
+from itertools import compress
 
 from src.Graphwrapper import *
+
+import matplotlib.pyplot as plt
+
+import random
 
 
 # def stereo_vo(kp, desc, dataset, graph: graphstructure, idx, prev_idx):
@@ -26,21 +31,16 @@ class VisualOdometry():
         P2 = block * block * 32
         self.disparity = cv2.StereoSGBM_create(minDisparity=0, numDisparities=32, blockSize=block, P1=P1, P2=P2)
         self.disparities = [np.divide(self.disparity.compute(np.array(self.dataset.get_cam0(0)), np.array(self.dataset.get_cam1(0))).astype(np.float32), 16)]
-        self.fastFeatures = cv2.FastFeatureDetector_create()
 
         self.lk_params = dict(winSize=(15, 15),
                               flags=cv2.MOTION_AFFINE,
                               maxLevel=3,
                               criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 50, 0.03))
 
-        self.orb = cv2.ORB_create(2000)
-        FLANN_INDEX_LSH = 6
-        index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
-        search_params = dict(checks=50)
-        self.flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
+        # create BFMatcher object
+        self.bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 
-
-
+        self.orb = cv2.ORB_create(nfeatures=100)
 
     @staticmethod
     def _form_transf(R, t):
@@ -60,6 +60,88 @@ class VisualOdometry():
         T[:3, :3] = R
         T[:3, 3] = t
         return T
+
+    def get_matches(self, img1, img2, kp1, kp2, des1, des2):
+        """
+        This function detect and compute keypoints and descriptors from the i-1'th and i'th image using the class orb object
+
+        Parameters
+        ----------
+        i (int): The current frame
+
+        Returns
+        -------
+        q1 (ndarray): The good keypoints matches position in i-1'th image
+        q2 (ndarray): The good keypoints matches position in i'th image
+        """
+        # This function should detect and compute keypoints and descriptors from the i-1'th and i'th image using the class orb object
+        # The descriptors should then be matched using the class flann object (knnMatch with k=2)
+        # Remove the matches not satisfying Lowe's ratio test
+        # Return a list of the good matches for each image, sorted such that the n'th descriptor in image i matches the n'th descriptor in image i-1
+        # https://docs.opencv.org/master/d1/de0/tutorial_py_feature_homography.html
+
+        # Match descriptors.
+        matches = self.bf.match(des1,des2)
+
+        ### VISUALISATION ### 
+        # # Sort them in the order of their distance.
+        # matches = sorted(matches, key = lambda x:x.distance)
+        # # Draw first 10 matches.
+        # img3 = cv2.drawMatches(img1,kp1,img2,kp2,matches[:10],None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+        # plt.imshow(img3),plt.show()
+        # #cv2.waitKey(0)
+
+        kp_matches = np.float32([ [kp1[m.queryIdx].pt, kp2[m.trainIdx].pt] for m in matches[:50] ])
+
+        return kp_matches
+    
+    def find_essential_mat(self,img1, img2, K_camera_matrix, matches):
+        kp1 = matches[:,0]
+        kp2 = matches[:,1]
+
+        confidence = 0.99
+        ransacReprojecThreshold = 1
+        essential_matrix, mask = cv2.findEssentialMat(
+                kp1,
+                kp2, 
+                K_camera_matrix, 
+                cv2.RANSAC, 
+                confidence,
+                ransacReprojecThreshold,
+                maxIters = 100000)
+        mask = mask.ravel()
+
+        inlier_matches = np.array([match for index, match in enumerate(matches) if mask[index]])
+
+        ### VISUALISATION ###
+        # inlier_kp1 = inlier_matches[:,0]
+        # inlier_kp2 = inlier_matches[:,1]
+
+        # n_arr = []
+        # for i in range(len(inlier_kp1)):
+        #     random_color=list(np.random.choice(range(255),size=3))
+        #     n_arr.append(random_color)
+        # n_arr = np.array(n_arr)
+
+        # i = 0
+        # image = cv2.cvtColor(img1,cv2.COLOR_GRAY2RGB)
+        # for kp in inlier_kp1:
+        #     color = (int(n_arr[i,0]), int(n_arr[i,1]), int(n_arr[i,2]))
+        #     image = cv2.circle(image, (int(kp[0]),int(kp[1])), radius=4, color=color, thickness=2)
+        #     i += 1
+        # cv2.imshow("Image 1", image)
+
+        # i = 0
+        # image = cv2.cvtColor(img2,cv2.COLOR_GRAY2RGB)
+        # for kp in inlier_kp2:
+        #     color = (int(n_arr[i,0]), int(n_arr[i,1]), int(n_arr[i,2]))
+        #     image = cv2.circle(image, (int(kp[0]),int(kp[1])), radius=4, color=color, thickness=2)
+        #     i += 1
+        # cv2.imshow("Image 2", image)
+
+        # cv2.waitKey(0)
+
+        return essential_matrix, inlier_matches     
 
     def reprojection_residuals(self, dof, q1, q2, Q1, Q2):
         """
@@ -108,49 +190,6 @@ class VisualOdometry():
         # Calculate the residuals
         residuals = np.vstack([q1_pred - q1.T, q2_pred - q2.T]).flatten()
         return residuals
-
-    def get_tiled_keypoints(self, img, tile_h, tile_w):
-        """
-        Splits the image into tiles and detects the 10 best keypoints in each tile
-
-        Parameters
-        ----------
-        img (ndarray): The image to find keypoints in. Shape (height, width)
-        tile_h (int): The tile height
-        tile_w (int): The tile width
-
-        Returns
-        -------
-        kp_list (ndarray): A 1-D list of all keypoints. Shape (n_keypoints)
-        """
-        def get_kps(x, y):
-            # Get the image tile
-            impatch = img[y:y + tile_h, x:x + tile_w]
-
-            # Detect keypoints
-            keypoints = self.fastFeatures.detect(impatch)
-            #keypoints, des1 = self.orb.detectAndCompute(img, None)
-
-            # Correct the coordinate for the point
-            for pt in keypoints:
-                pt.pt = (pt.pt[0] + x, pt.pt[1] + y)
-
-            # Get the 10 best keypoints
-            if len(keypoints) > 10:
-                keypoints = sorted(keypoints, key=lambda x: -x.response)
-                return keypoints[:10]
-            return keypoints
-        # Get the image height and width
-        h, w, *_ = img.shape
-
-        # Get the keypoints for each of the tiles
-        kp_list = [get_kps(x, y) for y in range(0, h, tile_h) for x in range(0, w, tile_w)]
-
-        #kp_list_flatten, des1 = self.orb.detectAndCompute(img, None)
-
-        # Flatten the keypoint list
-        kp_list_flatten = np.concatenate(kp_list)
-        return kp_list_flatten
 
     def track_keypoints(self, img1, img2, trackpoints1_, max_error=4):
         """
@@ -328,37 +367,7 @@ class VisualOdometry():
         transformation_matrix = self._form_transf(R, t)
         return transformation_matrix
 
-    def kp_left_in_right(self, kp1_l, disp1, min_disp=0.0, max_disp=100.0):
-        """
-        Calculates the right keypoints (feature points)
-
-        Parameters
-        ----------
-        q1 (ndarray): Feature points in i-1'th left image. In shape (n_points, 2)
-        disp1 (ndarray): Disparity i-1'th image per. Shape (height, width)
-        min_disp (float): The minimum disparity
-        max_disp (float): The maximum disparity
-
-        Returns
-        -------
-        q1_l (ndarray): Feature points in i-1'th left image. In shape (n_in_bounds, 2)
-        q1_r (ndarray): Feature points in i-1'th right image. In shape (n_in_bounds, 2)
-        """
-
-        n_points = len(kp1_l)
-        kp1_l_idx = np.ndarray(n_points, dtype=bool)
-        for i in range(0, n_points):
-            q_idx = kp1_l[i].pt
-            disp = disp1.T[int(q_idx[0]), int(q_idx[1])]
-            if min_disp < disp and disp < max_disp:
-                kp1_l_idx[i] = True
-            else:
-                kp1_l_idx[i] = False  
-        
-        return kp1_l[kp1_l_idx]
-
-
-    def get_pose(self, kp, desc, dataset, graph: graphstructure, current_img_idx, prev_idx):
+    def get_pose(self, kp2, desc2, dataset, graph: graphstructure, current_img_idx, prev_idx):
 
         """
         Calculates the transformation matrix for the i'th frame
@@ -375,17 +384,19 @@ class VisualOdometry():
 
         #img1_l, img2_l = self.images_l[i - 1:i + 1]
 
-        # Get teh tiled keypoints
-        vertex_0 = graph.g.vertex(len(graph.g.get_vertices()) - 1)
-        trackpoints1 = graph.v_keypoints[vertex_0]
-
-
         img1_l = np.array(self.dataset.get_cam0(prev_idx))
         img2_l = np.array(self.dataset.get_cam0(current_img_idx))
 
-        # Track the keypoints
-        tp1_l, tp2_l = self.track_keypoints(img1_l, img2_l, trackpoints1)
+        vertex_0 = graph.g.vertex(len(graph.g.get_vertices()) - 1)
+        kp1 = graph.v_keypoints[vertex_0]
+        kp1 = cv2.KeyPoint_convert(kp1)
+        
+        kp1, desc1 = self.orb.compute(img1_l, kp1)
 
+        matches = self.get_matches(img1_l, img2_l, kp1, kp2, desc1, desc2)
+        _, inlier_matches = self.find_essential_mat(img1_l, img2_l, self.K_l, matches)
+        kp1 = inlier_matches[:,0]
+        kp2 = inlier_matches[:,1]
         
         # Calculate the disparitie
         self.disparities.append(np.divide(self.disparity.compute(img2_l, np.array(self.dataset.get_cam1(current_img_idx))).astype(np.float32), 16))
@@ -393,14 +404,14 @@ class VisualOdometry():
         # Calculate the right keypoints
 
         idx = len(graph.g.get_vertices())
-        tp1_l, tp1_r, tp2_l, tp2_r = self.calculate_right_qs(tp1_l, tp2_l, self.disparities[idx - 1], self.disparities[idx])
+        kp1_l, kp1_r, kp2_l, kp2_r = self.calculate_right_qs(kp1_l, kp2_l, self.disparities[idx - 1], self.disparities[idx])
 
         # Calculate the 3D points
-        Q1, Q2, enough_points = self.calc_3d(tp1_l, tp1_r, tp2_l, tp2_r)
+        Q1, Q2, enough_points = self.calc_3d(kp1_l, kp1_r, kp2_l, kp2_r)
         if enough_points:
         # Estimate the transformation matrix
-            transformation_matrix = self.estimate_pose(tp1_l, tp2_l, Q1, Q2)
+            transformation_matrix = self.estimate_pose(kp1_l, kp2_l, Q1, Q2)
 
-            return transformation_matrix, enough_points
+            return transformation_matrix, inlier_matches
 
 

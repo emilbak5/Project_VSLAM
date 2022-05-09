@@ -38,6 +38,7 @@ class graphstructure():
 
         self.e_unc=self.g.new_edge_property("float")
         self.e_trans=self.g.new_edge_property("object")
+        self.e_kp_matches = self.g.new_edge_property("object")
 
 
         self.edgelist=[]
@@ -48,7 +49,7 @@ class graphstructure():
         self.v_Vinfo[self.last_v]=virtuelInfo
 
         #print(self.v_pose(self.last_v))
-    def add_vertex (self, pose, virtuelInfo, uncertanity, transformation, keypoints):
+    def add_vertex (self, pose, virtuelInfo, uncertanity, transformation, kp_matches, keypoints):
         v=self.g.add_vertex()
 
         self.v_pose[v]=pose
@@ -58,12 +59,14 @@ class graphstructure():
         e=self.g.add_edge(self.last_v,v)
         self.e_unc[e]=uncertanity
         self.e_trans[e]=transformation
+        self.e_kp_matches[e]= kp_matches
         self.last_v=v
 
-    def add_edge (self,uncertainty, transformation, targetV):
+    def add_edge (self,uncertainty, transformation, kp_matches, targetV):
         e=self.g.add_edge(self.last_v,targetV)
         self.e_unc[e]=uncertainty
         self.e_trans[e]=transformation
+        self.e_kp_matches[e]= kp_matches
         
         self.edgelist.append(e)
         self.last_v=targetV

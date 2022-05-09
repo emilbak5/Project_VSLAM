@@ -10,7 +10,7 @@ from src.helper_functions import *
 from src.keyframe import *
 from src.lsh_flann import *
 from src.stereo_vo_cleaned import *
-from src.graph_functions import *
+from src.graph_functions import *   
 
 
 def main():
@@ -25,7 +25,7 @@ def main():
 
     VO = VisualOdometry(dataset)
 
-    orb = cv2.ORB_create(1000)
+    orb = cv2.ORB_create(nfeatures=100)
 
     FLANN_INDEX_LSH = 6
     index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
@@ -46,6 +46,7 @@ def main():
 
 
 
+
     current_img_idx = 1
     graph_size = 1
     
@@ -55,9 +56,11 @@ def main():
 
 
         kp, desc = get_descripters(keyframe_idx, dataset, orb)
+
+
         add_to_lsh_table(desc, flann)
-        transform, _ = VO.get_pose(kp, desc, dataset, graph, current_img_idx, prev_idx)
-        add_to_graph(transform, desc, kp, graph_size, keyframe_idx, graph)
+        transform, inlier_matches = VO.get_pose(kp, desc, dataset, graph, keyframe_idx, prev_idx)
+        add_to_graph(transform, inlier_matches, desc, kp, graph_size, keyframe_idx, graph)
         graph_size += 1
 
 
