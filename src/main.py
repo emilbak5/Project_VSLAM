@@ -59,7 +59,7 @@ def main():
 
 
         add_to_lsh_table(desc, flann)
-        transform, inlier_matches = VO.get_pose(kp, desc, dataset, graph, keyframe_idx, prev_idx)
+        transform, inlier_matches = VO.get_pose(kp, desc, dataset, graph, current_img_idx, keyframe_idx)
         add_to_graph(transform, inlier_matches, desc, kp, graph_size, keyframe_idx, graph)
         graph_size += 1
 

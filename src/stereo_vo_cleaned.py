@@ -38,9 +38,9 @@ class VisualOdometry():
                               criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 50, 0.03))
 
         # create BFMatcher object
-        self.bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        self.bf = cv2.BFMatcher()
 
-        self.orb = cv2.ORB_create(nfeatures=10000)
+        self.sift = cv2.SIFT_create(nfeatures=1000)
 
     @staticmethod
     def _form_transf(R, t):
@@ -81,17 +81,22 @@ class VisualOdometry():
         # https://docs.opencv.org/master/d1/de0/tutorial_py_feature_homography.html
 
         # Match descriptors.
-        matches = self.bf.match(des1,des2)
+        matches = self.bf.knnMatch(des1,des2, k=2)
 
         ### VISUALISATION ### 
-        # # Sort them in the order of their distance.
-        # matches = sorted(matches, key = lambda x:x.distance)
-        # # Draw first 10 matches.
-        # img3 = cv2.drawMatches(img1,kp1,img2,kp2,matches[:10],None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-        # plt.imshow(img3),plt.show()
-        # #cv2.waitKey(0)
+        # Sort them in the order of their distance.
+        #matches = sorted(matches, key = lambda x:x.distance)
+        # Draw first 10 matches.
+        #img3 = cv2.drawMatches(img1,kp1,img2,kp2,matches[:5],None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+        #plt.imshow(img3),plt.show()
+        #cv2.waitKey(0)
 
-        kp_matches = np.float32([ [kp1[m.queryIdx].pt, kp2[m.trainIdx].pt] for m in matches ])
+        good = []
+        for m,n in matches:
+            if m.distance < 0.75*n.distance:
+                good.append([m])
+
+        kp_matches = np.float32([ [kp1[m.queryIdx].pt, kp2[m.trainIdx].pt] for m in good ])
 
         return kp_matches
     
@@ -114,32 +119,32 @@ class VisualOdometry():
         inlier_matches = np.array([match for index, match in enumerate(matches) if mask[index]])
 
         ### VISUALISATION ###
-        inlier_kp1 = inlier_matches[:,0]
-        inlier_kp2 = inlier_matches[:,1]
+        # inlier_kp1 = inlier_matches[:,0]
+        # inlier_kp2 = inlier_matches[:,1]
 
-        n_arr = []
-        for i in range(len(inlier_kp1)):
-            random_color=list(np.random.choice(range(255),size=3))
-            n_arr.append(random_color)
-        n_arr = np.array(n_arr)
+        # n_arr = []
+        # for i in range(len(inlier_kp1)):
+        #     random_color=list(np.random.choice(range(255),size=3))
+        #     n_arr.append(random_color)
+        # n_arr = np.array(n_arr)
 
-        i = 0
-        image = cv2.cvtColor(img1,cv2.COLOR_GRAY2RGB)
-        for kp in inlier_kp1:
-            color = (int(n_arr[i,0]), int(n_arr[i,1]), int(n_arr[i,2]))
-            image = cv2.circle(image, (int(kp[0]),int(kp[1])), radius=4, color=color, thickness=2)
-            i += 1
-        cv2.imshow("Image 1", image)
+        # i = 0
+        # image = cv2.cvtColor(img1,cv2.COLOR_GRAY2RGB)
+        # for kp in inlier_kp1:
+        #     color = (int(n_arr[i,0]), int(n_arr[i,1]), int(n_arr[i,2]))
+        #     image = cv2.circle(image, (int(kp[0]),int(kp[1])), radius=4, color=color, thickness=2)
+        #     i += 1
+        # cv2.imshow("Image 1", image)
 
-        i = 0
-        image = cv2.cvtColor(img2,cv2.COLOR_GRAY2RGB)
-        for kp in inlier_kp2:
-            color = (int(n_arr[i,0]), int(n_arr[i,1]), int(n_arr[i,2]))
-            image = cv2.circle(image, (int(kp[0]),int(kp[1])), radius=4, color=color, thickness=2)
-            i += 1
-        cv2.imshow("Image 2", image)
+        # i = 0
+        # image = cv2.cvtColor(img2,cv2.COLOR_GRAY2RGB)
+        # for kp in inlier_kp2:
+        #     color = (int(n_arr[i,0]), int(n_arr[i,1]), int(n_arr[i,2]))
+        #     image = cv2.circle(image, (int(kp[0]),int(kp[1])), radius=4, color=color, thickness=2)
+        #     i += 1
+        # cv2.imshow("Image 2", image)
 
-        cv2.waitKey(0)
+        # cv2.waitKey(0)
 
         return essential_matrix, inlier_matches     
 
@@ -367,7 +372,7 @@ class VisualOdometry():
         transformation_matrix = self._form_transf(R, t)
         return transformation_matrix
 
-    def get_pose(self, kp2, desc2, dataset, graph: graphstructure, current_img_idx, prev_idx):
+    def get_pose(self, kp2, desc2, dataset, graph: graphstructure, current_img_idx, keyframe_idx):
 
         """
         Calculates the transformation matrix for the i'th frame
@@ -384,22 +389,36 @@ class VisualOdometry():
 
         #img1_l, img2_l = self.images_l[i - 1:i + 1]
 
-        img1_l = np.array(self.dataset.get_cam0(prev_idx))
-        img2_l = np.array(self.dataset.get_cam0(current_img_idx))
+        img1_l = np.array(self.dataset.get_cam0(current_img_idx))
+        img2_l = np.array(self.dataset.get_cam0(keyframe_idx))
+        
 
         vertex_0 = graph.g.vertex(len(graph.g.get_vertices()) - 1)
         kp1 = graph.v_keypoints[vertex_0]
         kp1 = cv2.KeyPoint_convert(kp1)
         
-        kp1, desc1 = self.orb.compute(img1_l, kp1)
+        kp1, desc1 = self.sift.compute(img1_l, kp1)
+
+
+        # image = cv2.cvtColor(img1_l,cv2.COLOR_GRAY2RGB)
+        # cv2.drawKeypoints(img2_l, kp2, image, (0,0,255))
+        # cv2.imshow("Image 1", image)
+
+        # image = cv2.cvtColor(img2_l,cv2.COLOR_GRAY2RGB)
+        # cv2.drawKeypoints(img2_l, kp2, image, (0,0,255))
+        # cv2.imshow("Image 2", image)
+
+        # cv2.waitKey(0)
+
 
         matches = self.get_matches(img1_l, img2_l, kp1, kp2, desc1, desc2)
         _, inlier_matches = self.find_essential_mat(img1_l, img2_l, self.K_l, matches)
+        inlier_matches = matches
         kp1 = inlier_matches[:,0]
         kp2 = inlier_matches[:,1]
         
         # Calculate the disparitie
-        self.disparities.append(np.divide(self.disparity.compute(img2_l, np.array(self.dataset.get_cam1(current_img_idx))).astype(np.float32), 16))
+        self.disparities.append(np.divide(self.disparity.compute(img2_l, np.array(self.dataset.get_cam1(keyframe_idx))).astype(np.float32), 16))
 
         # Calculate the right keypoints
 
