@@ -34,13 +34,13 @@ graph = Graphwrapper.graphstructure(gt_poses[0], infotest)
 
 VO = VisualOdometry(dataset)
 
-orb = cv2.ORB_create(300)
+orb = cv2.ORB_create(600)
 #orb = cv2.SIFT_create(nfeatures=2000)
 
 FLANN_INDEX_LSH = 6
 index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
 search_params = dict(checks=50)
-flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
+flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams={})
 
 
 
@@ -146,7 +146,7 @@ def update(_):
         kp, desc = get_descripters(keyframe_idx, dataset, orb)
         #print(f'Getting desc : {time() - start_time}')
 
-        add_to_lsh_table(desc, flann)
+        add_to_lsh_table(desc, flann, graph)
 
         start_time = time()
         transform, enough_points = VO.get_pose(kp, desc, dataset, graph, current_img_idx, keyframe_idx)

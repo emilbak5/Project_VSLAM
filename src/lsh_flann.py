@@ -57,31 +57,33 @@ from src.Graphwrapper import *
 
 # cv2.waitKey()
 def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.FlannBasedMatcher):
-    FLANN_INDEX_LSH = 6
-    index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
-    search_params = dict(checks=50)
-    flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams={})
+    # FLANN_INDEX_LSH = 6
+    # index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
+    # search_params = dict(checks=50)
+    # flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams={})
     most_occuring = None
     loop_closure_found = False
 
-    if graph_size > 20:
+    if graph_size > 55:
         # print ("Matching...")
 
         vertex = graph.g.vertex(graph_size - 1)
 
         desc = graph.v_descriptors[vertex]
 
-        all_desc = lsh_table.getTrainDescriptors()
-        all_desc = all_desc[:-10]
+        # all_desc = lsh_table.getTrainDescriptors()
+        # all_desc = all_desc[:-50]
 
 
-        flann.add(all_desc)
 
-        dmatches = flann.match(desc)
+        #lsh_table.add(all_desc)
+
+        dmatches = lsh_table.match(desc)
 
         index_list = [dmatch.imgIdx for dmatch in dmatches]
         occurence_count = Counter(index_list)
         all_occurences = occurence_count.values()
+        print(max(all_occurences))
         if max(all_occurences) > 300:
             most_occuring = occurence_count.most_common(1)[0][0]
             loop_closure_found = True
@@ -91,7 +93,11 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
     ### Insert track keypointsfunc to see how many is in the same image
     return most_occuring, loop_closure_found
 
-def add_to_lsh_table(desc, flann):
-    flann.add([desc])
+def add_to_lsh_table(desc, flann, graph: graphstructure):
+    if len(graph.g.get_vertices()) > 50:
+        vertex = graph.g.vertex(len(graph.g.get_vertices()) - 50)   
+        descriptor = graph.v_descriptors[vertex]
+ 
+        flann.add([descriptor])
 
 

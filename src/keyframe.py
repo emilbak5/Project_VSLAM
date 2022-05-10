@@ -27,7 +27,7 @@ def get_next_keyframe(dataset, current_img_idx: int, graph: graphstructure, orb,
         
         tp1_l, tp2_l = track_keypoints(img_curr, img_next, trackpoints)
 
-        if len(tp1_l) < 30:
+        if len(tp1_l) < 60:
             return current_img_idx + img_iter
         
         img_iter += 1
