@@ -34,7 +34,8 @@ graph = Graphwrapper.graphstructure(gt_poses[0], infotest)
 
 VO = VisualOdometry(dataset)
 
-orb = cv2.ORB_create(2000)
+# orb = cv2.ORB_create(2000)
+orb = cv2.SIFT_create(nfeatures=2000)
 
 FLANN_INDEX_LSH = 6
 index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
@@ -272,7 +273,7 @@ def update(_):
 
 ani = FuncAnimation(fig, update, frames=gen, interval=100,
                     init_func=init, blit=False, repeat=False, save_count=num_images)
-#plt.show()
+plt.show()
 print("Saving animation as GIF")
 writergif = PillowWriter(fps=30) 
 ani.save("animation.mp4", fps=30)

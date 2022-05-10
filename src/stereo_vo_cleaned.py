@@ -38,6 +38,8 @@ class VisualOdometry():
         index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
         search_params = dict(checks=50)
         self.flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
+        self.bf = cv2.BFMatcher()
+
 
 
 
@@ -357,6 +359,43 @@ class VisualOdometry():
         
         return kp1_l[kp1_l_idx]
 
+    def get_matches(self, img1, img2, kp1, kp2, des1, des2):
+        """
+        This function detect and compute keypoints and descriptors from the i-1'th and i'th image using the class orb object
+        Parameters
+        ----------
+        i (int): The current frame
+        Returns
+        -------
+        q1 (ndarray): The good keypoints matches position in i-1'th image
+        q2 (ndarray): The good keypoints matches position in i'th image
+        """
+        # This function should detect and compute keypoints and descriptors from the i-1'th and i'th image using the class orb object
+        # The descriptors should then be matched using the class flann object (knnMatch with k=2)
+        # Remove the matches not satisfying Lowe's ratio test
+        # Return a list of the good matches for each image, sorted such that the n'th descriptor in image i matches the n'th descriptor in image i-1
+        # https://docs.opencv.org/master/d1/de0/tutorial_py_feature_homography.html
+
+        # Match descriptors.
+        matches = self.bf.knnMatch(des1,des2, k=2)
+
+        ### VISUALISATION ### 
+        # Sort them in the order of their distance.
+        #matches = sorted(matches, key = lambda x:x.distance)
+        # Draw first 10 matches.
+        #img3 = cv2.drawMatches(img1,kp1,img2,kp2,matches[:5],None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+        #plt.imshow(img3),plt.show()
+        #cv2.waitKey(0)
+        
+        good = []
+        for m,n in matches:
+            if m.distance < 0.75*n.distance:
+                good.append([m])
+
+        kp_matches = np.float32([ [kp1[m.queryIdx].pt, kp2[m.trainIdx].pt] for m in good ])
+
+        return kp_matches
+
 
     def get_pose(self, kp, desc, dataset, graph: graphstructure, current_img_idx, keyframe_idx):
 
@@ -378,14 +417,24 @@ class VisualOdometry():
         # Get teh tiled keypoints
         vertex_0 = graph.g.vertex(len(graph.g.get_vertices()) - 1)
         trackpoints1 = graph.v_keypoints[vertex_0]
+        desc1 = graph.v_descriptors[vertex_0]
 
+        trackpoints2 = kp
+        desc2 = desc
 
         img1_l = np.array(self.dataset.get_cam0(current_img_idx))
         img2_l = np.array(self.dataset.get_cam0(keyframe_idx))
 
         # Track the keypoints
-        tp1_l, tp2_l = self.track_keypoints(img1_l, img2_l, trackpoints1)
+        #tp1_l, tp2_l = self.track_keypoints(img1_l, img2_l, trackpoints1)
 
+        trackpoints1 = cv2.KeyPoint_convert(trackpoints1)
+        trackpoints2 = cv2.KeyPoint_convert(trackpoints2)
+        matches = self.get_matches(img1_l, img2_l, trackpoints1, trackpoints2, desc1, desc2)
+
+
+        tp1_l = matches[:,0]
+        tp2_l = matches[:,1]
         
         # Calculate the disparitie
         self.disparities.append(np.divide(self.disparity.compute(img2_l, np.array(self.dataset.get_cam1(keyframe_idx))).astype(np.float32), 16))
