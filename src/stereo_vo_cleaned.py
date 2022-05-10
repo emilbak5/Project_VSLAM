@@ -392,7 +392,7 @@ class VisualOdometry():
             if m.distance < 0.75*n.distance:
                 good.append([m])
 
-        kp_matches = np.float32([ [kp1[m.queryIdx].pt, kp2[m.trainIdx].pt] for m in good ])
+        kp_matches = np.float32([ [kp1[m[0].queryIdx].pt, kp2[m[0].trainIdx].pt] for m in good ])
 
         return kp_matches
 
@@ -429,7 +429,7 @@ class VisualOdometry():
         #tp1_l, tp2_l = self.track_keypoints(img1_l, img2_l, trackpoints1)
 
         trackpoints1 = cv2.KeyPoint_convert(trackpoints1)
-        trackpoints2 = cv2.KeyPoint_convert(trackpoints2)
+        #trackpoints2 = cv2.KeyPoint_convert(trackpoints2)
         matches = self.get_matches(img1_l, img2_l, trackpoints1, trackpoints2, desc1, desc2)
 
 

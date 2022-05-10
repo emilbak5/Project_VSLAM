@@ -34,8 +34,8 @@ graph = Graphwrapper.graphstructure(gt_poses[0], infotest)
 
 VO = VisualOdometry(dataset)
 
-# orb = cv2.ORB_create(2000)
-orb = cv2.SIFT_create(nfeatures=2000)
+orb = cv2.ORB_create(300)
+#orb = cv2.SIFT_create(nfeatures=2000)
 
 FLANN_INDEX_LSH = 6
 index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
@@ -135,22 +135,22 @@ def update(_):
 
     if current_img_idx < num_images - 1:
 
-        print()
-        print('---------------------------------')
-        print(f'Current img index : {current_img_idx}')
+        #print()
+        #print('---------------------------------')
+        #print(f'Current img index : {current_img_idx}')
         start_time = time()
         keyframe_idx = get_next_keyframe(dataset, current_img_idx, graph, orb, graph_size)
-        print(f'Keyframe : {time() - start_time}')
+        #print(f'Keyframe : {time() - start_time}')
 
         start_time = time()
         kp, desc = get_descripters(keyframe_idx, dataset, orb)
-        print(f'Getting desc : {time() - start_time}')
+        #print(f'Getting desc : {time() - start_time}')
 
         add_to_lsh_table(desc, flann)
 
         start_time = time()
         transform, enough_points = VO.get_pose(kp, desc, dataset, graph, current_img_idx, keyframe_idx)
-        print(f'Visual odometry : {time() - start_time}')
+        #print(f'Visual odometry : {time() - start_time}')
 
 
         if enough_points:
@@ -166,8 +166,9 @@ def update(_):
                 #bundle adjustment
 
             # visualize_path(graph)
-            # idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann) # Is not done
-            # if loop_closure_found_bool:
+            idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann) # Is not done
+            if loop_closure_found_bool:
+                print("Loop closure found mf")
             #     pass
             #     perform_loop_closure(idx, graph)
             #     update_visualize_path(graph)
@@ -256,7 +257,7 @@ def update(_):
                 ax[1].set_ylim(0, max(error_y) + border_error)
                 prev_max_y_error = max(error_y) + border_error - 5
 
-            print(f'Visualizing : {time() - start_time}')
+            #print(f'Visualizing : {time() - start_time}')
 
 
         else:
