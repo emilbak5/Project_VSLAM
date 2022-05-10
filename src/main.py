@@ -64,39 +64,7 @@ estimated_path.append((gt_poses[0][0, 3], gt_poses[0][2, 3]))
 current_img_idx = 1
 graph_size = 1
 
-# while current_img_idx <= num_images - 2:        
-    
-#     keyframe_idx = get_next_keyframe(dataset, current_img_idx, graph, orb, graph_size)
 
-
-#     kp, desc = get_descripters(keyframe_idx, dataset, orb)
-#     add_to_lsh_table(desc, flann)
-#     transform, _ = VO.get_pose(kp, desc, dataset, graph, current_img_idx, prev_idx)
-#     add_to_graph(transform, desc, kp, graph_size, keyframe_idx, graph)
-#     graph_size += 1
-
-
-#     if graph_size % 7 == 0:
-#         pass
-#         #bundle adjustment
-
-#     # visualize_path(graph)
-#     idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann) # Is not done
-#     if loop_closure_found_bool:
-#         pass
-#     #     perform_loop_closure(idx, graph)
-#     #     update_visualize_path(graph)
-#     prev_idx = current_img_idx
-#     current_img_idx = keyframe_idx
-
-#     print (graph_size)
-
-
-
-
-
-# fig, ax = plt.subplots()
-#fig = plt.figure(1)
 fig, ax = plt.subplots(1, 2 , figsize=(10,10))
 #ax[1] = plt.subplot(132, figsize=(15,15))
 
@@ -135,6 +103,15 @@ def init():
 
 i = 0
 frame = range(0, num_images-1)
+
+
+
+def gen():
+    global current_img_idx
+    i = 0
+    while current_img_idx <= num_images:
+        i += 1
+        yield i
 
 
 def update(_):
@@ -250,6 +227,24 @@ def update(_):
                 ax[0].set_ylim(gt_path_y - border_path, prev_max_y)
                 prev_min_y = gt_path_y - border_path
 
+            
+            if esti_path_x + border_path > prev_max_x:
+                ax[0].set_xlim(prev_min_x, esti_path_x + border_path)
+                prev_max_x = esti_path_x + border_path
+
+            if esti_path_x - border_path < prev_min_x:
+                ax[0].set_xlim(esti_path_x - border_path, prev_max_x)
+                prev_min_x = esti_path_x - border_path
+
+            if esti_path_y + border_path > prev_max_y:
+                ax[0].set_ylim(prev_min_y, esti_path_y + border_path)
+                prev_max_y = esti_path_y + border_path
+
+            if esti_path_y - border_path < prev_min_y:
+                ax[0].set_ylim(esti_path_y - border_path, prev_max_y)
+                prev_min_y = esti_path_y - border_path
+
+
             border_error = 10
 
             if graph_size + border_error > prev_max_x_error:
@@ -275,9 +270,9 @@ def update(_):
     
     return lines
 
-ani = FuncAnimation(fig, update, frames=num_images, interval=100,
+ani = FuncAnimation(fig, update, frames=gen, interval=100,
                     init_func=init, blit=False, repeat=False, save_count=num_images)
-# plt.show()
+#plt.show()
 print("Saving animation as GIF")
 writergif = PillowWriter(fps=30) 
 ani.save("animation.mp4", fps=30)
