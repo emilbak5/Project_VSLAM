@@ -140,6 +140,7 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
             occurence_count = Counter(index_list)
             all_occurences = occurence_count.values()
             print(max(all_occurences))
+            ## Estimer essential matrix og tæl inliers
             if max(all_occurences) > 10:
                 most_occuring = occurence_count.most_common(1)[0][0]
                 most_occuring = close_enough_points_idx[most_occuring]
@@ -149,9 +150,9 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
                 idx_match = graph.v_image_idx[vertex]
                 keypoints_match = graph.v_keypoints[vertex]
 
-                img3 = cv2.drawMatchesKnn(np.array(dataset.get_cam0(idx_match)), cv2.KeyPoint_convert(keypoints_match), np.array(dataset.get_cam0(current_img_idx_idx)), cv2.KeyPoint_convert(kp), dmatches, None, **draw_params)
-                cv2.imshow("test", img3)
-                cv2.waitKey(0)
+                # img3 = cv2.drawMatchesKnn(np.array(dataset.get_cam0(idx_match)), cv2.KeyPoint_convert(keypoints_match), np.array(dataset.get_cam0(current_img_idx_idx)), cv2.KeyPoint_convert(kp), dmatches, None, **draw_params)
+                # cv2.imshow("test", img3)
+                # cv2.waitKey(0)
                 # plt.imshow(img3,),plt.show()
                 # cv2.waitKey(0)
 
