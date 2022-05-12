@@ -34,13 +34,18 @@ graph = Graphwrapper.graphstructure(gt_poses[0], infotest)
 
 VO = VisualOdometry(dataset)
 
-orb = cv2.ORB_create(600)
+orb = cv2.ORB_create(700)
 #orb = cv2.SIFT_create(nfeatures=2000)
 
 FLANN_INDEX_LSH = 6
-index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
+FLANN_INDEX_KDTREE = 1
+
+index_params = dict(algorithm=FLANN_INDEX_LSH,  table_number = 10, key_size = 20, multi_probe_level = 2)
+# index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees = 5)
 search_params = dict(checks=50)
-flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams={})
+flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
+# flann = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
 
 
 
@@ -66,18 +71,21 @@ current_img_idx = 1
 graph_size = 1
 
 
-fig, ax = plt.subplots(1, 2 , figsize=(10,10))
+fig, ax = plt.subplots(1, 3 , figsize=(15,10))
 #ax[1] = plt.subplot(132, figsize=(15,15))
 
 gt_data_x, gt_data_y = [], []
 esti_data_x, esti_data_y = [], []
 error_x, error_y = [], []
+time_x, time_y = [], []
 
 
 gt_line, = ax[0].plot([], [], marker='o', color='b')
 esti_line, = ax[0].plot([], [], marker='o', color='r')
 error_line, = ax[1].plot([], [], marker='o', color='b')
-lines = [gt_line, esti_line, error_line]
+time_line, = ax[2].plot([], [], color='b')
+
+lines = [gt_line, esti_line, error_line, time_line]
 
 
 i = 0
@@ -88,6 +96,9 @@ prev_min_y = 0
 
 prev_max_x_error = 0
 prev_max_y_error = 0
+
+prev_max_x_time = 0
+prev_max_y_time = 0
 
 def init():
     for line in lines:
@@ -100,6 +111,10 @@ def init():
     ax[1].set_xlim(0, 10)
     ax[1].set_ylim(0, 10)
     ax[1].grid()
+
+    ax[2].set_xlim(0, 10)
+    ax[2].set_ylim(0, 0.5)
+    ax[2].grid()
     return lines
 
 i = 0
@@ -115,6 +130,7 @@ def gen():
         yield i
 
 
+
 def update(_):
     global i
     global prev_max_x
@@ -123,6 +139,8 @@ def update(_):
     global prev_min_y
     global prev_max_x_error
     global prev_max_y_error
+    global prev_max_x_time
+    global prev_max_y_time
     global gt_poses
     global num_images
     global graph_size
@@ -134,7 +152,6 @@ def update(_):
 
 
     if current_img_idx < num_images - 1:
-
         #print()
         #print('---------------------------------')
         #print(f'Current img index : {current_img_idx}')
@@ -142,13 +159,12 @@ def update(_):
         keyframe_idx = get_next_keyframe(dataset, current_img_idx, graph, orb, graph_size)
         #print(f'Keyframe : {time() - start_time}')
 
-        start_time = time()
         kp, desc = get_descripters(keyframe_idx, dataset, orb)
         #print(f'Getting desc : {time() - start_time}')
 
         add_to_lsh_table(desc, flann, graph)
 
-        start_time = time()
+        # start_time = time()
         transform, enough_points = VO.get_pose(kp, desc, dataset, graph, current_img_idx, keyframe_idx)
         #print(f'Visual odometry : {time() - start_time}')
 
@@ -166,7 +182,7 @@ def update(_):
                 #bundle adjustment
 
             # visualize_path(graph)
-            idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann) # Is not done
+            idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann, dataset, current_img_idx) # Is not done
             if loop_closure_found_bool:
                 print("Loop closure found mf")
             #     pass
@@ -176,12 +192,13 @@ def update(_):
             # current_img_idx = keyframe_idx
 
             
-            start_time = time()
+            # start_time = time()
 
             gt_path = gt_poses[current_img_idx][0, 3], gt_poses[current_img_idx][2, 3]
             gt_path_x, gt_path_y = [gt_path[0], gt_path[1]]
             gt_data_x.append(gt_path_x)
             gt_data_y.append(gt_path_y)
+
 
 
             esti_data_x.clear()
@@ -195,11 +212,14 @@ def update(_):
                 esti_data_x.append(esti_path_x)
                 esti_data_y.append(esti_path_y)
 
+            time_y.append(time() - start_time)
+            time_x.append(graph_size)
             
             
 
             esti_line.set_data(esti_data_x, esti_data_y)
             gt_line.set_data(gt_data_x, gt_data_y)
+            time_line.set_data(time_x, time_y)
 
             error_y.clear()
             for i in range(len(gt_data_x)):
@@ -257,6 +277,16 @@ def update(_):
                 ax[1].set_ylim(0, max(error_y) + border_error)
                 prev_max_y_error = max(error_y) + border_error - 5
 
+            border_error = 0.2
+
+            if graph_size + border_error > prev_max_x_time:
+                ax[2].set_xlim(0, graph_size + border_error)
+                prev_max_x_time = graph_size + border_error
+
+            if max(time_y) + border_error > prev_max_y_time:
+                ax[2].set_ylim(0, max(time_y) + border_error)
+                prev_max_y_error = max(time_y) + border_error - 5
+
             #print(f'Visualizing : {time() - start_time}')
 
 
@@ -274,6 +304,19 @@ def update(_):
 
 ani = FuncAnimation(fig, update, frames=gen, interval=100,
                     init_func=init, blit=False, repeat=False, save_count=num_images)
+
+pause = False
+def onClick(event):
+    global pause
+    if event.key.isspace():
+        if pause == False:
+            ani.event_source.stop()
+            pause = True
+        else:
+            ani.event_source.start()
+            pause = False
+
+fig.canvas.mpl_connect('key_press_event', onClick)
 plt.show()
 print("Saving animation as GIF")
 writergif = PillowWriter(fps=30) 
