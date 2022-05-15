@@ -6,7 +6,7 @@ from src.Graphwrapper import *
 def add_to_graph(transform, desc, kp, i, keyframe_idx, graph: graphstructure, current_pose):
     
 
-    kp = cv2.KeyPoint_convert(kp)
+    #kp = cv2.KeyPoint_convert(kp)
     
     prev_vertex = graph.g.vertex(i-1)
     vertex = graph.g.add_vertex()

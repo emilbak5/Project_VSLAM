@@ -5,6 +5,8 @@ from scipy.optimize import least_squares
 from src.Graphwrapper import *
 
 
+
+
 # def stereo_vo(kp, desc, dataset, graph: graphstructure, idx, prev_idx):
 
 class VisualOdometry():
@@ -428,7 +430,7 @@ class VisualOdometry():
         # Track the keypoints
         #tp1_l, tp2_l = self.track_keypoints(img1_l, img2_l, trackpoints1)
 
-        trackpoints1 = cv2.KeyPoint_convert(trackpoints1)
+        #trackpoints1 = cv2.KeyPoint_convert(trackpoints1)
         #trackpoints2 = cv2.KeyPoint_convert(trackpoints2)
         matches = self.get_matches(img1_l, img2_l, trackpoints1, trackpoints2, desc1, desc2)
 

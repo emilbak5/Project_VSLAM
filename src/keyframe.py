@@ -14,6 +14,7 @@ def get_next_keyframe(dataset, current_img_idx: int, graph: graphstructure, orb,
     vertex_prev = graph.g.vertex(graph_size - 1)
 
     trackpoints = graph.v_keypoints[vertex_prev]
+    trackpoints = cv2.KeyPoint_convert(trackpoints)
 
     
     

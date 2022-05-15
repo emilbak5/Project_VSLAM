@@ -68,7 +68,7 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
     lsh_table.clear()
     test = len(lsh_table.getTrainDescriptors())
 
-    graph_size_before_starting = 100
+    graph_size_before_starting = 10
 
     if graph_size > graph_size_before_starting + 2:
         # print ("Matching...")
@@ -101,65 +101,100 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
                 if (esti_path_y < current_y + max_dist_allowed and esti_path_y > current_y - max_dist_allowed):
                     close_enough_points_idx.append(i)
         
+
+        nr_good_matches = []
         for i in close_enough_points_idx:
             vertex = graph.g.vertex(i)
-            lsh_table.add([graph.v_descriptors[vertex]])
+            desc_match = graph.v_descriptors[vertex]
+            kp_match = graph.v_keypoints[vertex]
             
-
-        # desc_to_compare = np.array(desc_to_compare)
-
-        nr_of_desc = len(lsh_table.getTrainDescriptors())
-
-
-
-        #lsh_table.add(all_desc)
-        if nr_of_desc > 0:
-            dmatches = lsh_table.knnMatch(desc, k=2)
+            dmatches = lsh_table.knnMatch(desc, desc_match, k=2)
             dmatches = [dmatch for dmatch in dmatches if len(dmatch) == 2]
-            matchesMask = [[0,0] for i in range(len(dmatches))]
-
             good = []
-            for i, (m,n) in enumerate(dmatches):
+            
+            matchesMask = [[0,0] for i in range(len(dmatches))]
+            for j, (m,n) in enumerate(dmatches):
                 if m.distance < 0.75*n.distance:
                     good.append([m])
-                    matchesMask[i]=[1,0]
+                    matchesMask[j]=[1,0]
 
 
-
-        
             draw_params = dict(matchColor = (0,255,0),
                     singlePointColor = (255,0,0),
                     matchesMask = matchesMask,
                     flags = cv2.DrawMatchesFlags_DEFAULT)
 
+            if len(good) > 30:
+                img3 = cv2.drawMatchesKnn(np.array(dataset.get_cam0(i)), kp_match, np.array(dataset.get_cam0(current_img_idx_idx)), kp, dmatches, None, **draw_params)
+                cv2.imshow("test", img3)
+            nr_good_matches.append(len(good))
+                    # matchesMask[i]=[1,0]
+
+        x = 5
+        if nr_good_matches:
+            if max(nr_good_matches) > 40:
+                print(max(nr_good_matches))
+
+
+
+            # lsh_table.add([graph.v_descriptors[vertex]])
+            
+
+        # desc_to_compare = np.array(desc_to_compare)
+
+        # nr_of_desc = len(lsh_table.getTrainDescriptors())
+
+
+
+        #lsh_table.add(all_desc)
+        # if nr_of_desc > 0:
+        #     dmatches = lsh_table.knnMatch(desc, k=2)
+        #     dmatches = [dmatch for dmatch in dmatches if len(dmatch) == 2]
+        #     matchesMask = [[0,0] for i in range(len(dmatches))]
+
+        #     good = []
+        #     for i, (m,n) in enumerate(dmatches):
+        #         if m.distance < 0.75*n.distance:
+        #             good.append([m])
+        #             matchesMask[i]=[1,0]
+
+
+
+        
+            # draw_params = dict(matchColor = (0,255,0),
+            #         singlePointColor = (255,0,0),
+            #         matchesMask = matchesMask,
+            #         flags = cv2.DrawMatchesFlags_DEFAULT)
+
 
         
 
 
-            index_list = [dmatch[0].imgIdx for dmatch in dmatches]
-            occurence_count = Counter(index_list)
-            all_occurences = occurence_count.values()
-            print(max(all_occurences))
-            ## Estimer essential matrix og tæl inliers
-            if max(all_occurences) > 10:
-                most_occuring = occurence_count.most_common(1)[0][0]
-                most_occuring = close_enough_points_idx[most_occuring]
+        # index_list = [dmatch[0].imgIdx for dmatch in dmatches]
+        # occurence_count = Counter(index_list)
+        # all_occurences = occurence_count.values()
+        # # print(max(all_occurences))
+        # ## Estimer essential matrix og tæl inliers
+        # if max(all_occurences) > 10:
+        #     most_occuring = occurence_count.most_common(1)[0][0]
+        #     most_occuring = close_enough_points_idx[most_occuring]
 
-                vertex = graph.g.vertex(most_occuring)
+        #     vertex = graph.g.vertex(most_occuring)
 
-                idx_match = graph.v_image_idx[vertex]
-                keypoints_match = graph.v_keypoints[vertex]
+        #     idx_match = graph.v_image_idx[vertex]
+        #     keypoints_match = graph.v_keypoints[vertex]
 
-                # img3 = cv2.drawMatchesKnn(np.array(dataset.get_cam0(idx_match)), cv2.KeyPoint_convert(keypoints_match), np.array(dataset.get_cam0(current_img_idx_idx)), cv2.KeyPoint_convert(kp), dmatches, None, **draw_params)
-                # cv2.imshow("test", img3)
-                # cv2.waitKey(0)
-                # plt.imshow(img3,),plt.show()
-                # cv2.waitKey(0)
+        #     # img3 = cv2.drawMatchesKnn(np.array(dataset.get_cam0(idx_match)), cv2.KeyPoint_convert(keypoints_match), np.array(dataset.get_cam0(current_img_idx_idx)), cv2.KeyPoint_convert(kp), dmatches, None, **draw_params)
+            # cv2.imshow("test", img3)
+            # cv2.waitKey(0)
+        #     # plt.imshow(img3,),plt.show()
+        #     # cv2.waitKey(0)
 
-                loop_closure_found = True
-                print("Loop closure found!")
-        else:
-            print(0)
+        #     loop_closure_found = True
+        #     # print("Loop closure found!")
+        # else:
+        #     # print(0)
+        #     pass
 
 
     ### Insert track keypointsfunc to see how many is in the same image

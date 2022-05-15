@@ -53,7 +53,6 @@ flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_para
 prev_idx = 0
 ## First image
 keypoints, desc = orb.detectAndCompute(np.array(dataset.get_cam0(0)), None)
-keypoints = cv2.KeyPoint_convert(keypoints)
 vertex_0 = graph.g.vertex(0)
 graph.v_keypoints[vertex_0] = keypoints
 graph.v_descriptors[vertex_0] = desc
