@@ -58,12 +58,12 @@ from matplotlib import pyplot as plt
 
 
 # cv2.waitKey()
-def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.FlannBasedMatcher, dataset, current_img_idx):
+def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.FlannBasedMatcher, dataset, current_img_idx, kmeans):
     # FLANN_INDEX_LSH = 6
     # index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
     # search_params = dict(checks=50)
     # flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams={})
-    most_occuring = None
+    most_occuring = 0
     loop_closure_found = False
     lsh_table.clear()
     test = len(lsh_table.getTrainDescriptors())
@@ -100,13 +100,21 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
             if (esti_path_x < current_x + max_dist_allowed and esti_path_x > current_x - max_dist_allowed):
                 if (esti_path_y < current_y + max_dist_allowed and esti_path_y > current_y - max_dist_allowed):
                     close_enough_points_idx.append(i)
+
+
+#############################################################################################
         
 
         nr_good_matches = []
+        good_matches_idx = []
+        best_img_idx = None
+        best_kp_match = None
+        highest_match_count = 0
         for i in close_enough_points_idx:
             vertex = graph.g.vertex(i)
             desc_match = graph.v_descriptors[vertex]
             kp_match = graph.v_keypoints[vertex]
+            img_idx_match = graph.v_image_idx[vertex]
             
             dmatches = lsh_table.knnMatch(desc, desc_match, k=2)
             dmatches = [dmatch for dmatch in dmatches if len(dmatch) == 2]
@@ -118,26 +126,38 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
                     good.append([m])
                     matchesMask[j]=[1,0]
 
+            if len(good) > highest_match_count:
+                highest_match_count = len(good)
+                best_kp_match = kp_match
+                best_img_idx = img_idx_match
 
-            draw_params = dict(matchColor = (0,255,0),
-                    singlePointColor = (255,0,0),
-                    matchesMask = matchesMask,
-                    flags = cv2.DrawMatchesFlags_DEFAULT)
 
-            if len(good) > 30:
-                img3 = cv2.drawMatchesKnn(np.array(dataset.get_cam0(i)), kp_match, np.array(dataset.get_cam0(current_img_idx_idx)), kp, dmatches, None, **draw_params)
-                # show the image img3 untill the user presses a key
-                cv2.imshow("Image to search for", np.array(dataset.get_cam0(current_img_idx)))
-                cv2.imshow("Most similar image", img3)
-                cv2.waitKey()
-                nr_good_matches.append(len(good))
-            nr_good_matches.append(len(good))
+
+        good = sorted(good, key = lambda x:x[0].distance)
+
+        img = cv2.drawMatchesKnn(np.array(dataset.get_cam0(best_img_idx)), best_kp_match, np.array(dataset.get_cam0(current_img_idx_idx)), kp, good[:10], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)#cv2.DrawMatchesFlags_DEFAULT)#
+        # cv2.imshow("img", img)
+        cv2.imwrite("./saved_keypoints/loop_closure" + str(best_img_idx) + '.jpg', img)
+
+        good_matches_idx.append(img_idx_match)
+        nr_good_matches.append(len(good))
                     # matchesMask[i]=[1,0]
 
         x = 5
         if nr_good_matches:
-            if max(nr_good_matches) > 40:
+            if max(nr_good_matches) > 30:
+                # find the index of the largest number in "nr_good_matches"
+                most_occuring = nr_good_matches.index(max(nr_good_matches))
+                best_img_idx = good_matches_idx[most_occuring]
+
+                # show the image img3 untill the user presses a key
+                print(f'current img idx: {current_img_idx_idx}')
+                print(f"best img idx: {best_img_idx}")
                 print(max(nr_good_matches))
+                print('---------------------------')
+
+
+########################################################################################################################################
 
 
 
@@ -204,11 +224,49 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
     ### Insert track keypointsfunc to see how many is in the same image
     return most_occuring, loop_closure_found
 
-def add_to_lsh_table(desc, flann, graph: graphstructure):
+def add_to_lsh_table(descriptors, flann, graph: graphstructure, kmeans):
     if len(graph.g.get_vertices()) > 20:
-        vertex = graph.g.vertex(len(graph.g.get_vertices()) - 20)   
-        descriptor = graph.v_descriptors[vertex]
+        # vertex = graph.g.vertex(len(graph.g.get_vertices()) - 20)   
+        # descriptor = graph.v_descriptors[vertex]
  
-        flann.add([descriptor])
+        # flann.add([descriptor])
+        # descriptors = [desc for desc in descriptors if desc is not None]
+        # kmeans.fit(np.concatenate(descriptors))
+        pass
 
 
+
+
+
+
+
+
+
+
+################################################################  Bag of words
+        # descriptors = []
+        # n_clusters = 10
+        # for idx in close_enough_points_idx:
+        #     vertex = graph.g.vertex(idx)
+        #     desc_match = graph.v_descriptors[vertex]
+        #     descriptors.append(desc_match)
+
+        # # if len(descriptors) > 1:
+        # kmeans.fit(np.concatenate(descriptors))
+        # # else:
+        # #     kmeans.fit(descriptors.reshape(-1, 1))
+        
+        # labels = []
+        # for des_img in descriptors:
+        #     labels.append(kmeans.predict(des_img))
+        
+        # hist_match = [np.histogram(label, bins=n_clusters, range=(0,n_clusters-1))[0] for label in labels]
+
+
+        # labels_query = kmeans.predict(desc)
+        # histo = np.histogram(labels_query, bins=n_clusters, range=(0,n_clusters-1))[0]
+
+        # lowest_dist = [np.linalg.norm(hist - histo) for hist in hist_match]
+
+
+        # print(min(lowest_dist))

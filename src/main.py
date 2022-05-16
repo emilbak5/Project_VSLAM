@@ -4,6 +4,8 @@ from graph_tool.all import *
 import numpy as np
 from time import time
 import math
+from sklearn.cluster import KMeans
+
 
 from src.descriptors import *
 from src.helper_functions import *
@@ -34,6 +36,8 @@ graph = Graphwrapper.graphstructure(gt_poses[0], infotest)
 
 VO = VisualOdometry(dataset)
 
+
+kmeans = KMeans(10, verbose=0)
 orb = cv2.ORB_create(700)
 #orb = cv2.SIFT_create(nfeatures=2000)
 
@@ -70,7 +74,7 @@ current_img_idx = 1
 graph_size = 1
 
 
-fig, ax = plt.subplots(1, 3 , figsize=(15,10))
+fig, ax = plt.subplots(1, 3, figsize=(15,10))
 #ax[1] = plt.subplot(132, figsize=(15,15))
 
 gt_data_x, gt_data_y = [], []
@@ -161,7 +165,7 @@ def update(_):
         kp, desc = get_descripters(keyframe_idx, dataset, orb)
         #print(f'Getting desc : {time() - start_time}')
 
-        add_to_lsh_table(desc, flann, graph)
+        add_to_lsh_table(desc, flann, graph, kmeans)
 
         # start_time = time()
         transform, enough_points = VO.get_pose(kp, desc, dataset, graph, current_img_idx, keyframe_idx)
@@ -181,7 +185,7 @@ def update(_):
                 #bundle adjustment
 
             # visualize_path(graph)
-            idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann, dataset, current_img_idx) # Is not done
+            idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann, dataset, current_img_idx, kmeans) # Is not done
             if loop_closure_found_bool:
                 print("Loop closure found mf")
             #     pass
