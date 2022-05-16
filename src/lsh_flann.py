@@ -126,7 +126,11 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
 
             if len(good) > 30:
                 img3 = cv2.drawMatchesKnn(np.array(dataset.get_cam0(i)), kp_match, np.array(dataset.get_cam0(current_img_idx_idx)), kp, dmatches, None, **draw_params)
-                cv2.imshow("test", img3)
+                # show the image img3 untill the user presses a key
+                cv2.imshow("Image to search for", np.array(dataset.get_cam0(current_img_idx)))
+                cv2.imshow("Most similar image", img3)
+                cv2.waitKey()
+                nr_good_matches.append(len(good))
             nr_good_matches.append(len(good))
                     # matchesMask[i]=[1,0]
 
