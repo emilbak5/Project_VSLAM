@@ -4,7 +4,7 @@ import numpy as np
 from time import time
 import math
 from sklearn.cluster import KMeans
-import argparse
+# import argparse
 
 from src.descriptors import *
 from src.helper_functions import *
@@ -21,18 +21,17 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib import rcParams
 
 # make an argument parser that takes an argument called threshhold
-parser = argparse.ArgumentParser()
-parser.add_argument('--threshhold', type=int, default=100)
-# read the arguments
-args = parser.parse_args()
-threshhold = args.threshhold
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--threshhold', type=int, default=100)
+# # read the arguments
+# args = parser.parse_args()
+# threshhold = args.threshhold
 
 
 
 rcParams['animation.convert_path'] = r'/usr/local/bin/convert'
 
 
-import matplotlib
 
 
 print("Project in VSLAM")
