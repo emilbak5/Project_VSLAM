@@ -68,7 +68,7 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
     lsh_table.clear()
     test = len(lsh_table.getTrainDescriptors())
 
-    graph_size_before_starting = 4
+    graph_size_before_starting = 100
 
     if graph_size > graph_size_before_starting + 2:
         # print ("Matching...")
@@ -132,29 +132,28 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
                 best_img_idx = img_idx_match
 
 
+                good = sorted(good, key = lambda x:x[0].distance)
 
-        good = sorted(good, key = lambda x:x[0].distance)
+                img = cv2.drawMatchesKnn(np.array(dataset.get_cam0(best_img_idx)), best_kp_match, np.array(dataset.get_cam0(current_img_idx_idx)), kp, good[:10], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)#cv2.DrawMatchesFlags_DEFAULT)#
+                # cv2.imshow("img", img)
+                #cv2.imwrite("./saved_keypoints/loop_closure" + str(best_img_idx) + '.jpg', img)
 
-        img = cv2.drawMatchesKnn(np.array(dataset.get_cam0(best_img_idx)), best_kp_match, np.array(dataset.get_cam0(current_img_idx_idx)), kp, good[:10], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)#cv2.DrawMatchesFlags_DEFAULT)#
-        # cv2.imshow("img", img)
-        cv2.imwrite("./saved_keypoints/loop_closure" + str(best_img_idx) + '.jpg', img)
+                good_matches_idx.append(img_idx_match)
+                nr_good_matches.append(len(good))
+                            # matchesMask[i]=[1,0]
 
-        good_matches_idx.append(img_idx_match)
-        nr_good_matches.append(len(good))
-                    # matchesMask[i]=[1,0]
+                x = 5
+                if nr_good_matches:
+                    if max(nr_good_matches) > 30:
+                        # find the index of the largest number in "nr_good_matches"
+                        most_occuring = nr_good_matches.index(max(nr_good_matches))
+                        best_img_idx = good_matches_idx[most_occuring]
 
-        x = 5
-        if nr_good_matches:
-            if max(nr_good_matches) > 30:
-                # find the index of the largest number in "nr_good_matches"
-                most_occuring = nr_good_matches.index(max(nr_good_matches))
-                best_img_idx = good_matches_idx[most_occuring]
-
-                # show the image img3 untill the user presses a key
-                print(f'current img idx: {current_img_idx_idx}')
-                print(f"best img idx: {best_img_idx}")
-                print(max(nr_good_matches))
-                print('---------------------------')
+                        # show the image img3 untill the user presses a key
+                        print(f'current img idx: {current_img_idx_idx}')
+                        print(f"best img idx: {best_img_idx}")
+                        print(max(nr_good_matches))
+                        print('---------------------------')
 
 
 ########################################################################################################################################
