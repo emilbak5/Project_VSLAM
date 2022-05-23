@@ -68,7 +68,7 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
     lsh_table.clear()
     test = len(lsh_table.getTrainDescriptors())
 
-    graph_size_before_starting = 10
+    graph_size_before_starting = 4
 
     if graph_size > graph_size_before_starting + 2:
         # print ("Matching...")

@@ -38,14 +38,14 @@ VO = VisualOdometry(dataset)
 
 
 kmeans = KMeans(10, verbose=0)
-orb = cv2.ORB_create(700)
-#orb = cv2.SIFT_create(nfeatures=2000)
+#orb = cv2.ORB_create(2000)
+orb = cv2.SIFT_create(nfeatures=2000)
 
 FLANN_INDEX_LSH = 6
 FLANN_INDEX_KDTREE = 1
 
-index_params = dict(algorithm=FLANN_INDEX_LSH,  table_number = 10, key_size = 20, multi_probe_level = 2)
-# index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees = 5)
+#index_params = dict(algorithm=FLANN_INDEX_LSH,  table_number = 10, key_size = 20, multi_probe_level = 2)
+index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees = 5)
 search_params = dict(checks=50)
 flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
 # flann = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
