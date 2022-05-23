@@ -2,7 +2,7 @@ import cv2
 from scipy.optimize import least_squares
 
 
-from src.Graphwrapper import *
+from Graphwrapper import *
 
 
 

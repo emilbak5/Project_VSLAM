@@ -5,6 +5,12 @@ from time import time
 import math
 from sklearn.cluster import KMeans
 # import argparse
+import os
+
+# change the path to "PROJECT_VSLAM" FOLDER
+# path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "PROJECT_VSLAM")
+
+
 
 from src.descriptors import *
 from src.helper_functions import *
@@ -19,6 +25,8 @@ import json
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib import rcParams
+
+
 
 # make an argument parser that takes an argument called threshhold
 # parser = argparse.ArgumentParser()

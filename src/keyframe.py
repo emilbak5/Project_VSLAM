@@ -1,5 +1,5 @@
 import cv2
-from Graphwrapper import *
+from src.Graphwrapper import *
 
 
 
