@@ -144,7 +144,7 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
 
                 x = 5
                 if nr_good_matches:
-                    if max(nr_good_matches) > 30:
+                    if max(nr_good_matches) > 50:
                         # find the index of the largest number in "nr_good_matches"
                         most_occuring = nr_good_matches.index(max(nr_good_matches))
                         best_img_idx = good_matches_idx[most_occuring]

@@ -1,11 +1,10 @@
-from visual_odometry_mono_template import visual_odemetry_mono
 import Graphwrapper
 from graph_tool.all import *
 import numpy as np
 from time import time
 import math
 from sklearn.cluster import KMeans
-
+import argparse
 
 from src.descriptors import *
 from src.helper_functions import *
@@ -13,12 +12,23 @@ from src.keyframe import *
 from src.lsh_flann import *
 from src.stereo_vo_cleaned import *
 from src.graph_functions import *
+import json
 
 
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib import rcParams
+
+# make an argument parser that takes an argument called threshhold
+parser = argparse.ArgumentParser()
+parser.add_argument('--threshhold', type=int, default=100)
+# read the arguments
+args = parser.parse_args()
+threshhold = args.threshhold
+
+
+
 rcParams['animation.convert_path'] = r'/usr/local/bin/convert'
 
 
@@ -28,7 +38,7 @@ import matplotlib
 print("Project in VSLAM")
 
 
-num_images = 4000
+num_images = 500
 dataset = get_dataset(num_images)
 gt_poses = dataset.poses
 infotest=np.array([1,2,3])
@@ -101,22 +111,33 @@ prev_max_x_error = 0
 prev_max_y_error = 0
 
 prev_max_x_time = 0
-prev_max_y_time = 0
+prev_max_y_time = 500
 
 def init():
     for line in lines:
         line.set_data([],[])
 
+    # set the axis labels and give the plot a title
+    ax[0].set_xlabel('X [m]')
+    ax[0].set_ylabel('Y [m]')
+    ax[0].set_title('Ground Truth and Estimated Trajectory')
     ax[0].set_xlim(-10, 10)
     ax[0].set_ylim(-10, 10)
     ax[0].grid()
 
+
+    ax[1].set_xlabel('Graph Size')
+    ax[1].set_ylabel('Error [m]')
+    ax[1].set_title('Error')
     ax[1].set_xlim(0, 10)
     ax[1].set_ylim(0, 10)
     ax[1].grid()
 
+    ax[2].set_xlabel('Graph Size')
+    ax[2].set_ylabel('Time [ms]')
+    ax[2].set_title('Time')
     ax[2].set_xlim(0, 10)
-    ax[2].set_ylim(0, 0.5)
+    ax[2].set_ylim(0, 500)
     ax[2].grid()
     return lines
 
@@ -128,7 +149,7 @@ frame = range(0, num_images-1)
 def gen():
     global current_img_idx
     i = 0
-    while current_img_idx <= num_images:
+    while current_img_idx <= num_images - 2:
         i += 1
         yield i
 
@@ -151,15 +172,17 @@ def update(_):
     global prev_idx
     global current_pose
     global keyframe_idx
+    global threshhold
 
 
 
-    if current_img_idx < num_images - 1:
+    if current_img_idx < num_images - 3:
         #print()
         #print('---------------------------------')
         #print(f'Current img index : {current_img_idx}')
+        print(current_img_idx)
         start_time = time()
-        keyframe_idx = get_next_keyframe(dataset, current_img_idx, graph, orb, graph_size)
+        keyframe_idx = get_next_keyframe(dataset, current_img_idx, graph, orb, graph_size, threshhold)
         #print(f'Keyframe : {time() - start_time}')
 
         kp, desc = get_descripters(keyframe_idx, dataset, orb)
@@ -215,7 +238,7 @@ def update(_):
                 esti_data_x.append(esti_path_x)
                 esti_data_y.append(esti_path_y)
 
-            time_y.append(time() - start_time)
+            time_y.append((time() - start_time)*1000)
             time_x.append(graph_size)
             
             
@@ -278,9 +301,9 @@ def update(_):
 
             if max(error_y) + border_error > prev_max_y_error:
                 ax[1].set_ylim(0, max(error_y) + border_error)
-                prev_max_y_error = max(error_y) + border_error - 5
+                prev_max_y_error = max(error_y) + border_error - 5 
 
-            border_error = 0.2
+            border_error = 10
 
             if graph_size + border_error > prev_max_x_time:
                 ax[2].set_xlim(0, graph_size + border_error)
@@ -288,9 +311,22 @@ def update(_):
 
             if max(time_y) + border_error > prev_max_y_time:
                 ax[2].set_ylim(0, max(time_y) + border_error)
-                prev_max_y_error = max(time_y) + border_error - 5
+                prev_max_y_error = max(time_y) + border_error + 15
 
             #print(f'Visualizing : {time() - start_time}')
+
+            # convert the data from error_y and time_y to a dict
+            data = {'error': error_y, 'time': time_y}
+
+
+            # save the data from error_y and time_y in a json file
+            with open('keyframe_test/keyframe_test' + str(threshold) + '.json', 'w') as outfile:
+                json.dump(data, outfile)
+
+
+
+
+            
 
 
         else:
@@ -298,9 +334,9 @@ def update(_):
 
 
 
-
     prev_idx = current_img_idx
     current_img_idx = keyframe_idx
+    
     
     
     return lines
@@ -320,11 +356,17 @@ def onClick(event):
             pause = False
 
 fig.canvas.mpl_connect('key_press_event', onClick)
-plt.show()
+#plt.show()
 print("Saving animation as GIF")
+
+
 writergif = PillowWriter(fps=30) 
 ani.save("animation.mp4", fps=30)
+#save an image of the figure
+fig.savefig("test.png")
+
 print("Annimation saved")
+
 
     
 

@@ -5,7 +5,7 @@ from Graphwrapper import *
 
 
 
-def get_next_keyframe(dataset, current_img_idx: int, graph: graphstructure, orb, graph_size):
+def get_next_keyframe(dataset, current_img_idx: int, graph: graphstructure, orb, graph_size, threshold):
 
 
 
@@ -28,7 +28,7 @@ def get_next_keyframe(dataset, current_img_idx: int, graph: graphstructure, orb,
         
         tp1_l, tp2_l = track_keypoints(img_curr, img_next, trackpoints)
 
-        if len(tp1_l) < 2000:
+        if len(tp1_l) < threshold:
             return current_img_idx + img_iter
         
         img_iter += 1
