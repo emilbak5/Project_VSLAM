@@ -4,7 +4,7 @@ import numpy as np
 from time import time
 import math
 from sklearn.cluster import KMeans
-# import argparse
+import argparse
 import os
 
 # change the path to "PROJECT_VSLAM" FOLDER
@@ -29,11 +29,11 @@ from matplotlib import rcParams
 
 
 # make an argument parser that takes an argument called threshhold
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--threshhold', type=int, default=100)
-# # read the arguments
-# args = parser.parse_args()
-# threshhold = args.threshhold
+parser = argparse.ArgumentParser()
+parser.add_argument('--threshhold', type=int, default=100)
+# read the arguments
+args = parser.parse_args()
+threshhold = args.threshhold
 
 
 
@@ -327,7 +327,7 @@ def update(_):
 
 
             # save the data from error_y and time_y in a json file
-            with open('keyframe_test/keyframe_test' + str(threshold) + '.json', 'w') as outfile:
+            with open('keyframe_test/keyframe_test' + str(threshhold) + '.json', 'w') as outfile:
                 json.dump(data, outfile)
 
 
