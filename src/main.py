@@ -6,9 +6,15 @@ import math
 from sklearn.cluster import KMeans
 import argparse
 import os
+import sys
 
-# change the path to "PROJECT_VSLAM" FOLDER
-# path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "PROJECT_VSLAM")
+# get the path of the folder project_vslam
+project_vslam_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print(project_vslam_path)
+# insert the project_vslam path to the sys path
+sys.path.insert(0, project_vslam_path)
+
+
 
 
 
@@ -30,10 +36,11 @@ from matplotlib import rcParams
 
 # make an argument parser that takes an argument called threshhold
 parser = argparse.ArgumentParser()
-parser.add_argument('--threshhold', type=int, default=100)
+parser.add_argument('--threshhold', type=int, default=140)
 # read the arguments
 args = parser.parse_args()
 threshhold = args.threshhold
+print(threshhold)
 
 
 
@@ -45,7 +52,7 @@ rcParams['animation.convert_path'] = r'/usr/local/bin/convert'
 print("Project in VSLAM")
 
 
-num_images = 500
+num_images = 1000
 dataset = get_dataset(num_images)
 gt_poses = dataset.poses
 infotest=np.array([1,2,3])
@@ -183,7 +190,7 @@ def update(_):
 
 
 
-    if current_img_idx < num_images - 3:
+    if current_img_idx < num_images - 10:
         #print()
         #print('---------------------------------')
         #print(f'Current img index : {current_img_idx}')
