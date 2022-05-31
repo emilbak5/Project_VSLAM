@@ -36,7 +36,7 @@ from matplotlib import rcParams
 
 # make an argument parser that takes an argument called threshhold
 parser = argparse.ArgumentParser()
-parser.add_argument('--threshhold', type=int, default=10)
+parser.add_argument('--threshhold', type=int, default=90)
 # read the arguments
 args = parser.parse_args()
 threshhold = args.threshhold
@@ -52,7 +52,7 @@ rcParams['animation.convert_path'] = r'/usr/local/bin/convert'
 print("Project in VSLAM")
 
 
-num_images = 1015
+num_images = 2015
 dataset = get_dataset(num_images)
 gt_poses = dataset.poses
 infotest=np.array([1,2,3])

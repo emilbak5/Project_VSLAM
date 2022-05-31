@@ -76,7 +76,7 @@ print(frames_removed)
 
 plt.plot(threshholds[0:len(mean_errors)], mean_errors)
 plt.xlabel('Threshold')
-plt.ylabel('Sum Error [m]')
+plt.ylabel('Mean Error [m]')
 plt.title('Mean Error vs Threshold')
 # save the plot
 plt.savefig('sum_error_vs_threshold.png')

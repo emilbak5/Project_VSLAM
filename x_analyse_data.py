@@ -3,9 +3,9 @@ import json
 import numpy as np
 
 
-
+string = 'keyframe_test/keyframe_test90.json'
 # read the data.json and values in lists
-with open('data.json') as json_file:
+with open(string) as json_file:
     data = json.load(json_file)
     error = data['error']
     time = data['time']
