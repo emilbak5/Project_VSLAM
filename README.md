@@ -33,3 +33,11 @@ After, run "apt-get update" and then
 For a more indepth explanation, visit
 https://git.skewed.de/count0/graph-tool/-/wikis/installation-instructions
 https://askubuntu.com/questions/197564/how-do-i-add-a-line-to-my-etc-apt-sources-list
+
+# Report data
+Bundle adjustment data is generated using the Bundle-Adjustment branch
+Loop closure data is generated using the LoopClosureData branch
+All other data is generated using the combineVisual branch
+
+Before any scripts can be run make sure to download the KITTI Visual Benchmark Suite datasets "odometry data set (grayscale, 22 GB)", the "odometry ground truth poses (4 MB)" and the "odometry development kit (1 MB)".
+Link: http://www.cvlibs.net/datasets/kitti/eval_odometry.php
