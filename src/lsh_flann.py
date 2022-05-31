@@ -58,7 +58,7 @@ from matplotlib import pyplot as plt
 
 
 # cv2.waitKey()
-def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.FlannBasedMatcher, dataset, current_img_idx, kmeans):
+def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.FlannBasedMatcher, dataset, current_img_idx, kmeans, gt_poses):
     # FLANN_INDEX_LSH = 6
     # index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
     # search_params = dict(checks=50)
@@ -82,6 +82,7 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
         edge = graph.g.edge(graph_size - 2, graph_size - 1)
         transform = graph.e_trans[edge]
         esti_path = transform[0, 3], transform[2, 3]
+        esti_path = gt_poses[current_img_idx][0,3], gt_poses[current_img_idx][2,3]
         current_x, current_y = [esti_path[0], esti_path[1]]
 
         close_enough_points_idx = []        
@@ -144,11 +145,11 @@ def find_most_similar_image(graph_size, graph: graphstructure, lsh_table: cv2.Fl
 
                 x = 5
                 if nr_good_matches:
-                    if max(nr_good_matches) > 30:
+                    if max(nr_good_matches) > 40: #50
                         # find the index of the largest number in "nr_good_matches"
                         most_occuring = nr_good_matches.index(max(nr_good_matches))
                         best_img_idx = good_matches_idx[most_occuring]
-
+                        loop_closure_found = True
                         # show the image img3 untill the user presses a key
                         print(f'current img idx: {current_img_idx_idx}')
                         print(f"best img idx: {best_img_idx}")

@@ -38,14 +38,14 @@ VO = VisualOdometry(dataset)
 
 
 kmeans = KMeans(10, verbose=0)
-orb = cv2.ORB_create(1000)
+orb = cv2.ORB_create(700)
 #orb = cv2.SIFT_create(nfeatures=2000)
 
 FLANN_INDEX_LSH = 6
 FLANN_INDEX_KDTREE = 1
 
 index_params = dict(algorithm=FLANN_INDEX_LSH,  table_number = 10, key_size = 20, multi_probe_level = 2)
-#index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees = 5)
+# index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees = 5)
 search_params = dict(checks=50)
 flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
 # flann = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
@@ -81,14 +81,17 @@ gt_data_x, gt_data_y = [], []
 esti_data_x, esti_data_y = [], []
 error_x, error_y = [], []
 time_x, time_y = [], []
+loop_x, loop_y = [], []
 
 
 gt_line, = ax[0].plot([], [], marker='o', color='b')
 esti_line, = ax[0].plot([], [], marker='o', color='r')
+loop_closure_points, =ax[0].plot([], [], marker='o', linestyle='None', color='g')
 error_line, = ax[1].plot([], [], marker='o', color='b')
 time_line, = ax[2].plot([], [], color='b')
 
-lines = [gt_line, esti_line, error_line, time_line]
+
+lines = [gt_line, esti_line, loop_closure_points, error_line, time_line]
 
 
 i = 0
@@ -170,7 +173,7 @@ def update(_):
         # start_time = time()
         transform, enough_points = VO.get_pose(kp, desc, dataset, graph, current_img_idx, keyframe_idx)
         #print(f'Visual odometry : {time() - start_time}')
-
+        #transform = np.matmul(gt_poses[current_img_idx], np.linalg.inv(gt_poses[current_img_idx-1]))
 
         if enough_points:
 
@@ -185,9 +188,13 @@ def update(_):
                 #bundle adjustment
 
             # visualize_path(graph)
-            idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann, dataset, current_img_idx, kmeans) # Is not done
+            idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann, dataset, current_img_idx, kmeans, gt_poses) # Is not done
             if loop_closure_found_bool:
+
                 print("Loop closure found mf")
+                #print(VO.get_pose(kp, desc, dataset, graph, keyframe_idx, idx))
+                #print(current_pose)
+                #print("index: {}, keyframe_idx: {}".format(idx, keyframe_idx))
             #     pass
             #     perform_loop_closure(idx, graph)
             #     update_visualize_path(graph)
@@ -201,6 +208,9 @@ def update(_):
             gt_path_x, gt_path_y = [gt_path[0], gt_path[1]]
             gt_data_x.append(gt_path_x)
             gt_data_y.append(gt_path_y)
+            if (loop_closure_found_bool):
+                loop_x.append(gt_path_x)
+                loop_y.append(gt_path_y)
 
 
 
@@ -214,15 +224,18 @@ def update(_):
                 esti_path_x, esti_path_y = [esti_path[0], esti_path[1]]
                 esti_data_x.append(esti_path_x)
                 esti_data_y.append(esti_path_y)
+                #esti_data_x.append(gt_path_x)
+                #esti_data_y.append(gt_path_y)
 
             time_y.append(time() - start_time)
             time_x.append(graph_size)
             
             
 
-            esti_line.set_data(esti_data_x, esti_data_y)
+            #esti_line.set_data(esti_data_x, esti_data_y)
             gt_line.set_data(gt_data_x, gt_data_y)
             time_line.set_data(time_x, time_y)
+            loop_closure_points.set_data(loop_x, loop_y)
 
             error_y.clear()
             for i in range(len(gt_data_x)):
