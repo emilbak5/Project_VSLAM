@@ -36,7 +36,7 @@ from matplotlib import rcParams
 
 # make an argument parser that takes an argument called threshhold
 parser = argparse.ArgumentParser()
-parser.add_argument('--threshhold', type=int, default=140)
+parser.add_argument('--threshhold', type=int, default=10)
 # read the arguments
 args = parser.parse_args()
 threshhold = args.threshhold
@@ -52,7 +52,7 @@ rcParams['animation.convert_path'] = r'/usr/local/bin/convert'
 print("Project in VSLAM")
 
 
-num_images = 1000
+num_images = 1015
 dataset = get_dataset(num_images)
 gt_poses = dataset.poses
 infotest=np.array([1,2,3])
@@ -163,7 +163,7 @@ frame = range(0, num_images-1)
 def gen():
     global current_img_idx
     i = 0
-    while current_img_idx <= num_images - 2:
+    while current_img_idx <= num_images - 15:
         i += 1
         yield i
 
@@ -190,7 +190,7 @@ def update(_):
 
 
 
-    if current_img_idx < num_images - 10:
+    if current_img_idx < num_images:
         #print()
         #print('---------------------------------')
         #print(f'Current img index : {current_img_idx}')
@@ -222,9 +222,9 @@ def update(_):
                 #bundle adjustment
 
             # visualize_path(graph)
-            idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann, dataset, current_img_idx, kmeans) # Is not done
-            if loop_closure_found_bool:
-                print("Loop closure found mf")
+            # idx, loop_closure_found_bool = find_most_similar_image(graph_size, graph, flann, dataset, current_img_idx, kmeans) # Is not done
+            # if loop_closure_found_bool:
+            #     print("Loop closure found mf")
             #     pass
             #     perform_loop_closure(idx, graph)
             #     update_visualize_path(graph)
@@ -335,21 +335,24 @@ def update(_):
 
             # save the data from error_y and time_y in a json file
             with open('keyframe_test/keyframe_test' + str(threshhold) + '.json', 'w') as outfile:
-                json.dump(data, outfile)
-
-
-
-
-            
+                json.dump(data, outfile) 
 
 
         else:
             print(enough_points)
-
+    
+    else: 
+        print("Done")
+    
 
 
     prev_idx = current_img_idx
     current_img_idx = keyframe_idx
+
+
+
+
+
     
     
     
